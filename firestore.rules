@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidTournament(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.mode in ['Single Elimination', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Mixicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano'] &&
+             data.status in ['active', 'completed'] &&
+             data.players is list && data.players.size() >= 2 && data.players.size() <= 64 &&
+             data.courtsCount is int && data.courtsCount > 0 &&
+             data.pointsToPlay is int && data.pointsToPlay > 0 &&
+             data.creatorId is string &&
+             data.createdAt is string &&
+             (!('currentRound' in data) || data.currentRound is int);
+    }
+
+    function isValidMatch(data) {
+      return data.tournamentId is string &&
+             data.team1 is list && data.team1.size() == 2 &&
+             data.team2 is list && data.team2.size() == 2 &&
+             data.score1 is int && data.score1 >= 0 &&
+             data.score2 is int && data.score2 >= 0 &&
+             data.sets1 is list && data.sets2 is list &&
+             data.serverIndex is int && data.serverIndex >= 0 && data.serverIndex <= 3 &&
+             data.status in ['pending', 'in-progress', 'completed'] &&
+             (!('round' in data) || data.round is int) &&
+             (!('court' in data) || data.court is int) &&
+             (!('winner' in data) || data.winner in [1, 2]);
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidTournament(request.resource.data) && request.resource.data.creatorId == request.auth.uid;
+      allow update: if isAuthenticated() && isValidTournament(request.resource.data) && (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
+      
+      match /matches/{matchId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidMatch(request.resource.data);
+        allow update: if isValidMatch(request.resource.data); // Allow public update for scoring
+        allow delete: if isAuthenticated() && (get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.creatorId == request.auth.uid || isAdmin());
+
+        match /presence/{presenceId} {
+          allow read: if true;
+          allow write: if true;
+          allow delete: if true;
+        }
+      }
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "kendrick.marzuki@gmail.com" && request.auth.token.email_verified == true);
+    }
+  }
+}

@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Noto Serif", serif;
+  --font-sans: "Work Sans", sans-serif;
+  
+  --color-surface: #fcfaee;
+  --color-surface-container-low: #f6f4e8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #e5e3d7;
+  --color-surface-variant: #f0ede0;
+  --color-on-surface: #1b1c15;
+  
+  --color-primary: #705d00;
+  --color-primary-container: #ffde59;
+  --color-on-primary-container: #756100;
+  
+  --color-secondary: #456553;
+  --color-outline-variant: #cfc6af;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-surface/80 backdrop-blur-[20px];
+  }
+  
+  .label-sm {
+    @apply text-[10px] uppercase tracking-[0.1rem] font-bold opacity-60;
+  }
+}
