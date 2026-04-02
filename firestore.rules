@@ -16,7 +16,7 @@ service cloud.firestore {
 
     function isValidTournament(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.mode in ['Single Elimination', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Mixicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano'] &&
+             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Mixicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano'] &&
              data.status in ['active', 'completed'] &&
              data.players is list && data.players.size() >= 2 && data.players.size() <= 64 &&
              data.courtsCount is int && data.courtsCount > 0 &&

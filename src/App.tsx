@@ -58,6 +58,7 @@ import {
   X,
   Share2,
   AlertTriangle,
+  AlertCircle,
   ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -74,6 +75,22 @@ const PadelBall = ({ className }: { className?: string }) => (
     <path d="M20.6881 16.5079C20.5832 16.4493 20.435 16.3627 20.2514 16.246C19.8844 16.0126 19.3751 15.6581 18.787 15.1643C17.6106 14.1765 16.1165 12.6292 14.816 10.3767C13.5156 8.12426 12.9226 6.05661 12.6553 4.54398C12.5217 3.78771 12.4694 3.16946 12.4508 2.73491C12.4415 2.51757 12.4406 2.34597 12.4422 2.22577C12.4431 2.16566 12.4495 2.04426 12.4508 2.01052C10.6072 1.9259 8.71856 2.35017 7.00167 3.34142C5.28578 4.33209 3.97456 5.75449 3.126 7.39219L3.31486 7.49547C3.41977 7.55415 3.56795 7.64072 3.75151 7.75744C4.11855 7.99083 4.6278 8.34528 5.21594 8.83912C6.39229 9.82688 7.88643 11.3743 9.18688 13.6267C10.4873 15.8792 11.0803 17.9468 11.3476 19.4594C11.4812 20.2157 11.5335 20.834 11.5521 21.2685C11.5614 21.4858 11.5623 21.6575 11.5607 21.7777V21.9932C13.4017 22.0762 15.2873 21.6517 17.0017 20.6619C18.7158 19.6723 20.0261 18.2518 20.8747 16.6162L20.6881 16.5079Z" fill="currentColor"/>
     <path d="M10.0598 21.8114C10.0611 21.7179 10.0615 21.5204 10.0535 21.3327C10.0374 20.9572 9.99142 20.4051 9.87046 19.7204C9.62854 18.3512 9.08739 16.4544 7.88784 14.3767C6.6883 12.299 5.31623 10.882 4.25137 9.98786C3.7189 9.54076 3.26381 9.2249 2.94663 9.02321C2.7881 8.9224 2.61686 8.82409 2.53523 8.77843C1.63973 11.4119 1.84135 14.4035 3.34142 17.0017C4.84147 19.5998 7.33139 21.2702 10.0598 21.8114Z" fill="currentColor"/>
     <path d="M13.9431 2.19181C13.9419 2.28533 13.9414 2.48305 13.9494 2.67075C13.9655 3.04627 14.0115 3.59833 14.1325 4.28301C14.3744 5.65227 14.9155 7.54903 16.1151 9.62671C17.3146 11.7044 18.6867 13.1214 19.7516 14.0156C20.284 14.4627 20.7391 14.7785 21.0563 14.9802C21.2148 15.081 21.3864 15.1795 21.468 15.2252C22.3636 12.5916 22.162 9.59995 20.6619 7.00167C19.1618 4.40337 16.6717 2.73296 13.9431 2.19181Z" fill="currentColor"/>
+  </svg>
+);
+
+const ManIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="14" r="5" />
+    <path d="M13.5 10.5L21 3" />
+    <path d="M16 3H21V8" />
+  </svg>
+);
+
+const WomanIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="9" r="5" />
+    <path d="M12 14V22" />
+    <path d="M9 19H15" />
   </svg>
 );
 
@@ -203,26 +220,25 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady) return;
     
-    // If user is logged in, fetch their tournaments or all public ones
-    // For now, we'll fetch all tournaments if public read is allowed
     const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Tournament[] = [];
       snapshot.forEach((d) => list.push({ id: d.id, ...d.data() } as Tournament));
-      
-      // If user is logged in, we might want to filter or just show all
-      // For this app, we'll show all tournaments the user can see
       setTournaments(list);
+      
+      // Update selectedTournament if it's in the list
+      if (selectedTournament) {
+        const updated = list.find(t => t.id === selectedTournament.id);
+        if (updated) {
+          setSelectedTournament(updated);
+        }
+      }
     }, (error) => {
-      // If not logged in, this might fail if we don't have public list permission
-      // But we allowed public read on /tournaments/{id}, not necessarily the collection list
-      // Let's check if we want public list. The request says "anyone with the link"
-      // which usually means specific ID.
       console.warn('Tournaments list fetch failed (likely not logged in):', error.message);
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user]);
+  }, [isAuthReady, selectedTournament?.id]);
 
   // Matches Listener
   useEffect(() => {
@@ -242,85 +258,399 @@ export default function App() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login Error:', error);
+      alert(`Login failed: ${error.message}\n\nTroubleshooting:\n1. Wait 5 minutes for the new API key to activate.\n2. Ensure this app's URL is added to Firebase Auth -> Settings -> Authorized Domains.`);
     }
   };
 
   const handleLogout = () => signOut(auth);
 
-  const createTournament = async (name: string, mode: GameMode, players: Player[], courtsCount: number, pointsToPlay: number) => {
+  const createTournament = async (name: string, mode: GameMode, players: Player[], courtsCount: number, pointsToPlay: number, numberOfMatches?: number, swissPools?: number, playoffTeams?: number, playoffType?: 'single' | 'double') => {
     if (!user) return;
-    console.log('Creating tournament:', { name, mode, players, courtsCount, pointsToPlay });
+    
+    // Assign default names to empty players
+    const processedPlayers = players.map((p, i) => ({
+      ...p,
+      name: p.name.trim() || `Player ${i + 1}`
+    }));
+
+    console.log('Creating tournament:', { name, mode, players: processedPlayers, courtsCount, pointsToPlay, numberOfMatches, swissPools, playoffTeams, playoffType });
     try {
-      const tData: Omit<Tournament, 'id'> = {
-        name,
-        mode,
-        creatorId: user.uid,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        players,
-        currentRound: 1,
-        courtsCount,
-        pointsToPlay
-      };
-      const docRef = await addDoc(collection(db, 'tournaments'), tData);
-      console.log('Tournament created with ID:', docRef.id);
-      
+      if (mode === GameMode.SINGLE_ELIMINATION || mode === GameMode.DOUBLE_ELIMINATION) {
+        const teams: string[][] = [];
+        for (let i = 0; i < processedPlayers.length; i += 2) {
+          if (i + 1 < processedPlayers.length) {
+            teams.push([processedPlayers[i].name, processedPlayers[i+1].name]);
+          }
+        }
+        
+        if (teams.length < 2) {
+          alert(`Cannot generate matches for ${mode} with the current players. Please ensure you have enough players.`);
+          return;
+        }
+
+        // Pad teams to power of 2
+        const powerOf2 = Math.pow(2, Math.ceil(Math.log2(teams.length)));
+        const byes = powerOf2 - teams.length;
+        for (let i = 0; i < byes; i++) {
+          teams.push(['BYE', 'BYE']);
+        }
+
+        // Shuffle teams randomly
+        for (let i = teams.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [teams[i], teams[j]] = [teams[j], teams[i]];
+        }
+
+        const tData: any = {
+          name,
+          mode,
+          creatorId: user.uid,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          players: processedPlayers,
+          currentRound: 1,
+          courtsCount,
+          pointsToPlay,
+        };
+
+        const actualTeamsCount = Math.floor(processedPlayers.length / 2);
+        if (mode === GameMode.SINGLE_ELIMINATION) {
+          tData.numberOfMatches = actualTeamsCount > 1 ? actualTeamsCount - 1 : 0;
+        } else if (mode === GameMode.DOUBLE_ELIMINATION) {
+          tData.numberOfMatches = actualTeamsCount > 1 ? (actualTeamsCount - 1) * 2 + 1 : 0;
+        } else if (numberOfMatches !== undefined) {
+          tData.numberOfMatches = numberOfMatches;
+        }
+
+        if (swissPools !== undefined) tData.swissPools = swissPools;
+        if (playoffTeams !== undefined) tData.playoffTeams = playoffTeams;
+        if (playoffType !== undefined) tData.playoffType = playoffType;
+
+        const docRef = await addDoc(collection(db, 'tournaments'), tData);
+        const tId = docRef.id;
+
+        // Generate bracket
+        const totalRounds = Math.log2(powerOf2);
+        const matchesByRound: { id: string, ref: any, data: any }[][] = Array.from({ length: totalRounds }, () => []);
+        
+        for (let r = 0; r < totalRounds; r++) {
+          const matchesInRound = powerOf2 / Math.pow(2, r + 1);
+          for (let m = 0; m < matchesInRound; m++) {
+            const matchId = `wb-${r + 1}-${m}`;
+            const matchRef = doc(db, `tournaments/${tId}/matches`, matchId);
+            
+            const nextMatchId = r < totalRounds - 1 ? `wb-${r + 2}-${Math.floor(m / 2)}` : (mode === GameMode.DOUBLE_ELIMINATION ? 'gf-1' : null);
+
+            const matchData: any = {
+              tournamentId: tId,
+              team1: r === 0 ? teams[m * 2] : ['TBD'],
+              team2: r === 0 ? teams[m * 2 + 1] : ['TBD'],
+              score1: 0,
+              score2: 0,
+              sets1: [],
+              sets2: [],
+              serverIndex: 0,
+              status: MatchStatus.PENDING,
+              round: r + 1,
+              court: m + 1,
+              matchIndex: m,
+            };
+
+            if (nextMatchId !== null) {
+              matchData.nextMatchId = nextMatchId;
+            }
+
+            matchesByRound[r].push({
+              id: matchId,
+              ref: matchRef,
+              data: matchData
+            });
+          }
+        }
+
+        // Handle BYEs in the first round
+        for (let m = 0; m < matchesByRound[0].length; m++) {
+          const match = matchesByRound[0][m];
+          if (match.data.team1[0] === 'BYE') {
+            match.data.status = MatchStatus.COMPLETED;
+            match.data.winner = 2;
+            match.data.score2 = pointsToPlay;
+          } else if (match.data.team2[0] === 'BYE') {
+            match.data.status = MatchStatus.COMPLETED;
+            match.data.winner = 1;
+            match.data.score1 = pointsToPlay;
+          }
+        }
+
+        // Advance BYE winners
+        for (let r = 0; r < totalRounds - 1; r++) {
+          for (let m = 0; m < matchesByRound[r].length; m++) {
+            const match = matchesByRound[r][m];
+            if (match.data.status === MatchStatus.COMPLETED && match.data.nextMatchId) {
+              const winner = match.data.winner === 1 ? match.data.team1 : match.data.team2;
+              const nextMatchIdx = matchesByRound[r + 1].findIndex(nm => nm.id === match.data.nextMatchId);
+              if (nextMatchIdx !== -1) {
+                const isTeam1 = match.data.matchIndex % 2 === 0;
+                matchesByRound[r + 1][nextMatchIdx].data[isTeam1 ? 'team1' : 'team2'] = winner;
+              }
+            }
+          }
+        }
+
+        // Save WB matches
+        for (let r = 0; r < totalRounds; r++) {
+          for (let m = 0; m < matchesByRound[r].length; m++) {
+            await setDoc(matchesByRound[r][m].ref, matchesByRound[r][m].data);
+          }
+        }
+
+        if (mode === GameMode.DOUBLE_ELIMINATION) {
+          // Initial LB round
+          const lbRound1Matches = powerOf2 / 2;
+          for (let i = 0; i < lbRound1Matches; i++) {
+            const matchId = `lb-1-${i}`;
+            await setDoc(doc(db, `tournaments/${tId}/matches`, matchId), {
+              tournamentId: tId,
+              team1: ['TBD'],
+              team2: ['TBD'],
+              score1: 0,
+              score2: 0,
+              sets1: [],
+              sets2: [],
+              serverIndex: 0,
+              status: MatchStatus.PENDING,
+              round: 1,
+              court: i + 1,
+              matchIndex: i,
+              isLosersBracket: true
+            });
+          }
+          
+          // Grand Final
+          await setDoc(doc(db, `tournaments/${tId}/matches`, 'gf-1'), {
+            tournamentId: tId,
+            team1: ['TBD'],
+            team2: ['TBD'],
+            score1: 0,
+            score2: 0,
+            sets1: [],
+            sets2: [],
+            serverIndex: 0,
+            status: MatchStatus.PENDING,
+            round: totalRounds + 1,
+            court: 1
+          });
+        }
+
+        console.log(`${mode} bracket generated`);
+        setView('list');
+        return;
+      }
+
       // Initial match generation based on mode
       let matchPairs: { team1: string[], team2: string[] }[] = [];
 
       if (mode === GameMode.NORMAL_AMERICANO || mode === GameMode.MEXICANO || mode === GameMode.SUPER_MEXICANO) {
-        const playerNames = players.map(p => p.name);
-        for (let i = 0; i < playerNames.length; i += 4) {
-          if (i + 3 < playerNames.length) {
-            matchPairs.push({
-              team1: [playerNames[i], playerNames[i+1]],
-              team2: [playerNames[i+2], playerNames[i+3]]
-            });
+        const playerNames = processedPlayers.map(p => p.name);
+        const n = playerNames.length;
+        const totalMatches = numberOfMatches || Math.max(1, Math.floor((n * (n - 1)) / 4));
+        
+        // For all modes, we only generate the first round initially.
+        const targetInitialMatches = totalMatches;
+        
+        const allPossiblePairs: [string, string][] = [];
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            allPossiblePairs.push([playerNames[i], playerNames[j]]);
           }
         }
-      } else if (mode === GameMode.TEAM_AMERICANO || mode === GameMode.TEAM_MEXICANO) {
+
+        const playedMatches = new Set<string>();
+        const pairUsageCount = new Map<string, number>();
+        allPossiblePairs.forEach(p => pairUsageCount.set([...p].sort().join(','), 0));
+
+        while (matchPairs.length < targetInitialMatches) {
+          const sortedPairs = [...allPossiblePairs].sort((a, b) => 
+            pairUsageCount.get([...a].sort().join(','))! - pairUsageCount.get([...b].sort().join(','))! || Math.random() - 0.5
+          );
+
+          let foundMatch = false;
+          const playersUsedInThisRound = new Set<string>();
+          for (let i = 0; i < sortedPairs.length; i++) {
+            const p1 = sortedPairs[i];
+            if (playersUsedInThisRound.has(p1[0]) || playersUsedInThisRound.has(p1[1])) continue;
+
+            for (let j = i + 1; j < sortedPairs.length; j++) {
+              const p2 = sortedPairs[j];
+              if (playersUsedInThisRound.has(p2[0]) || playersUsedInThisRound.has(p2[1])) continue;
+              
+              const playersInMatch = new Set([...p1, ...p2]);
+              if (playersInMatch.size !== 4) continue;
+              
+              const matchKey = [...p1].sort().join(',') + ' vs ' + [...p2].sort().join(',');
+              const reverseMatchKey = [...p2].sort().join(',') + ' vs ' + [...p1].sort().join(',');
+              
+              if (playedMatches.has(matchKey) || playedMatches.has(reverseMatchKey)) continue;
+              
+              matchPairs.push({ team1: p1, team2: p2 });
+              playedMatches.add(matchKey);
+              pairUsageCount.set([...p1].sort().join(','), pairUsageCount.get([...p1].sort().join(','))! + 1);
+              pairUsageCount.set([...p2].sort().join(','), pairUsageCount.get([...p2].sort().join(','))! + 1);
+              playersUsedInThisRound.add(p1[0]);
+              playersUsedInThisRound.add(p1[1]);
+              playersUsedInThisRound.add(p2[0]);
+              playersUsedInThisRound.add(p2[1]);
+              foundMatch = true;
+              break;
+            }
+            if (foundMatch) break;
+          }
+          
+          if (!foundMatch) break;
+        }
+        // Store total matches in tournament object
+        numberOfMatches = totalMatches;
+      } else if (mode === GameMode.TEAM_AMERICANO || mode === GameMode.TEAM_MEXICANO || mode === GameMode.ROUND_ROBIN || mode === GameMode.SWISS_SYSTEM) {
         const teams: string[][] = [];
-        for (let i = 0; i < players.length; i += 2) {
-          if (i + 1 < players.length) {
-            teams.push([players[i].name, players[i+1].name]);
+        for (let i = 0; i < processedPlayers.length; i += 2) {
+          if (i + 1 < processedPlayers.length) {
+            teams.push([processedPlayers[i].name, processedPlayers[i+1].name]);
           }
         }
         
-        if (mode === GameMode.TEAM_AMERICANO) {
-          // Every team plays every other team once
-          for (let i = 0; i < teams.length; i++) {
-            for (let j = i + 1; j < teams.length; j++) {
-              matchPairs.push({ team1: teams[i], team2: teams[j] });
+        if (mode === GameMode.TEAM_AMERICANO || mode === GameMode.ROUND_ROBIN || mode === GameMode.SWISS_SYSTEM) {
+          // Generate only the first round
+          const numTeams = teams.length;
+          const isOdd = numTeams % 2 !== 0;
+          const scheduleTeams = isOdd ? [...teams, ['BYE', 'BYE']] : [...teams];
+          const n = scheduleTeams.length;
+          const matchesPerRound = Math.max(1, Math.floor(numTeams / 2));
+          
+          for (let i = 0; i < n / 2; i++) {
+            const t1 = scheduleTeams[i];
+            const t2 = scheduleTeams[n - 1 - i];
+            if (t1[0] !== 'BYE' && t2[0] !== 'BYE') {
+              matchPairs.push({ team1: t1, team2: t2 });
             }
           }
+          numberOfMatches = matchesPerRound;
         } else {
-          // TEAM_MEXICANO initial round
+          // TEAM_MEXICANO, SWISS_SYSTEM, DOUBLE_ELIMINATION, SINGLE_ELIMINATION initial round
           for (let i = 0; i < teams.length; i += 2) {
             if (i + 1 < teams.length) {
               matchPairs.push({ team1: teams[i], team2: teams[i+1] });
             }
           }
         }
-      } else if (mode === GameMode.MIX_AMERICANO || mode === GameMode.MIXICANO) {
-        const men = players.filter(p => p.gender === 'man').map(p => p.name);
-        const women = players.filter(p => p.gender === 'woman').map(p => p.name);
+      } else if (mode === GameMode.MIX_AMERICANO) {
+        const men = processedPlayers.filter(p => p.gender === 'man').map(p => p.name);
+        const women = processedPlayers.filter(p => p.gender === 'woman').map(p => p.name);
+        const n = Math.min(men.length, women.length);
+        const matchesPerRound = Math.max(1, Math.floor(n / 2));
+        const totalMatches = numberOfMatches || (n >= 2 ? (n % 2 === 0 ? n - 1 : n) * matchesPerRound : 1);
         
-        for (let i = 0; i < men.length; i += 2) {
-          if (i + 1 < men.length && i + 1 < women.length) {
-            matchPairs.push({
-              team1: [men[i], women[i]],
-              team2: [men[i+1], women[i+1]]
-            });
+        const targetInitialMatches = (mode === GameMode.MIX_AMERICANO) ? totalMatches : matchesPerRound;
+
+        const allPossibleMixedPairs: [string, string][] = [];
+        for (let i = 0; i < men.length; i++) {
+          for (let j = 0; j < women.length; j++) {
+            allPossibleMixedPairs.push([men[i], women[j]]);
           }
         }
+
+        const playedMatches = new Set<string>();
+        const pairUsageCount = new Map<string, number>();
+        allPossibleMixedPairs.forEach(p => pairUsageCount.set([...p].sort().join(','), 0));
+
+        while (matchPairs.length < targetInitialMatches) {
+          const sortedPairs = [...allPossibleMixedPairs].sort((a, b) => 
+            pairUsageCount.get([...a].sort().join(','))! - pairUsageCount.get([...b].sort().join(','))! || Math.random() - 0.5
+          );
+
+          let foundMatch = false;
+          const playersUsedInThisRound = new Set<string>();
+          for (let i = 0; i < sortedPairs.length; i++) {
+            const p1 = sortedPairs[i];
+            if (playersUsedInThisRound.has(p1[0]) || playersUsedInThisRound.has(p1[1])) continue;
+
+            for (let j = i + 1; j < sortedPairs.length; j++) {
+              const p2 = sortedPairs[j];
+              if (playersUsedInThisRound.has(p2[0]) || playersUsedInThisRound.has(p2[1])) continue;
+              
+              const playersInMatch = new Set([...p1, ...p2]);
+              if (playersInMatch.size !== 4) continue;
+              
+              const matchKey = [...p1].sort().join(',') + ' vs ' + [...p2].sort().join(',');
+              const reverseMatchKey = [...p2].sort().join(',') + ' vs ' + [...p1].sort().join(',');
+              
+              if (playedMatches.has(matchKey) || playedMatches.has(reverseMatchKey)) continue;
+              
+              matchPairs.push({ team1: p1, team2: p2 });
+              playedMatches.add(matchKey);
+              pairUsageCount.set([...p1].sort().join(','), pairUsageCount.get([...p1].sort().join(','))! + 1);
+              pairUsageCount.set([...p2].sort().join(','), pairUsageCount.get([...p2].sort().join(','))! + 1);
+              playersUsedInThisRound.add(p1[0]);
+              playersUsedInThisRound.add(p1[1]);
+              playersUsedInThisRound.add(p2[0]);
+              playersUsedInThisRound.add(p2[1]);
+              foundMatch = true;
+              break;
+            }
+            if (foundMatch) break;
+          }
+          
+          if (!foundMatch) break;
+        }
+        // Store total matches in tournament object
+        numberOfMatches = totalMatches;
       }
+
+      if (matchPairs.length === 0) {
+        alert(`Cannot generate matches for ${mode} with the current players. Please ensure you have enough players (e.g., minimum 4 players for most modes, or equal men/women for mix modes).`);
+        return;
+      }
+
+      const tData: any = {
+        name,
+        mode,
+        creatorId: user.uid,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        players: processedPlayers,
+        currentRound: 1,
+        courtsCount,
+        pointsToPlay,
+      };
+
+      if (numberOfMatches !== undefined) tData.numberOfMatches = numberOfMatches;
+      if (swissPools !== undefined) tData.swissPools = swissPools;
+      if (playoffTeams !== undefined) tData.playoffTeams = playoffTeams;
+      if (playoffType !== undefined) tData.playoffType = playoffType;
+
+      const docRef = await addDoc(collection(db, 'tournaments'), tData);
+      console.log('Tournament created with ID:', docRef.id);
 
       console.log('Generating', matchPairs.length, 'initial matches');
 
       for (let i = 0; i < matchPairs.length; i++) {
         const pair = matchPairs[i];
+        const n = processedPlayers.length;
+        const isMix = mode === GameMode.MIX_AMERICANO;
+        let matchesPerRound = numberOfMatches || 1;
+        
+        if (isMix) {
+          const men = processedPlayers.filter(p => p.gender === 'man').length;
+          const women = processedPlayers.length - men;
+          matchesPerRound = numberOfMatches || Math.max(1, Math.floor(Math.min(men, women) / 2));
+        } else if (!numberOfMatches) {
+          matchesPerRound = Math.max(1, Math.floor(n / 4));
+        }
+
+        const round = Math.floor(i / matchesPerRound) + 1;
+        const court = (i % courtsCount) + 1;
+
         await addDoc(collection(db, `tournaments/${docRef.id}/matches`), {
           tournamentId: docRef.id,
           team1: pair.team1,
@@ -331,8 +661,8 @@ export default function App() {
           sets2: [],
           serverIndex: 0,
           status: MatchStatus.PENDING,
-          round: 1,
-          court: (i % courtsCount) + 1
+          round: round,
+          court: court
         });
       }
 
@@ -349,6 +679,82 @@ export default function App() {
     if (!selectedTournament) return;
     try {
       await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, matchId), updates);
+      
+      // If bracket match completed, handle progression
+      if (updates.status === MatchStatus.COMPLETED && updates.winner) {
+        const match = matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        const winningTeam = updates.winner === 1 ? match.team1 : match.team2;
+        const losingTeam = updates.winner === 1 ? match.team2 : match.team1;
+
+        // Advance winner in Winners Bracket or to Grand Final
+        if (match.nextMatchId) {
+          const nextMatch = matches.find(m => m.id === match.nextMatchId);
+          if (nextMatch) {
+            const isTeam1 = match.matchIndex! % 2 === 0;
+            await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, nextMatch.id!), {
+              [isTeam1 ? 'team1' : 'team2']: winningTeam
+            });
+          }
+        }
+
+        // Handle Double Elimination specific logic
+        if (selectedTournament.mode === GameMode.DOUBLE_ELIMINATION) {
+          // If WB match, move loser to LB
+          if (matchId.startsWith('wb-')) {
+            const [_, roundStr, matchIdxStr] = matchId.split('-');
+            const round = parseInt(roundStr);
+            const matchIdx = parseInt(matchIdxStr);
+
+            // Loser of WB Round 1 goes to LB Round 1
+            if (round === 1) {
+              const lbMatchId = `lb-1-${Math.floor(matchIdx / 2)}`;
+              const lbMatch = matches.find(m => m.id === lbMatchId);
+              if (lbMatch) {
+                const isTeam1 = matchIdx % 2 === 0;
+                await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, lbMatchId), {
+                  [isTeam1 ? 'team1' : 'team2']: losingTeam
+                });
+              }
+            }
+            // For higher rounds, it gets more complex. 
+            // In a standard DE, losers of WB Round 2 go to LB Round 2, etc.
+            // This is a simplified version.
+          }
+
+          // If LB match, advance winner in LB
+          if (matchId.startsWith('lb-')) {
+            const [_, roundStr, matchIdxStr] = matchId.split('-');
+            const round = parseInt(roundStr);
+            const matchIdx = parseInt(matchIdxStr);
+
+            // Simplified LB progression: winner of LB-1 goes to LB-2, etc.
+            // In reality, LB has more rounds than WB.
+            const nextLbMatchId = `lb-${round + 1}-${Math.floor(matchIdx / 2)}`;
+            const nextLbMatch = matches.find(m => m.id === nextLbMatchId);
+            if (nextLbMatch) {
+              const isTeam1 = matchIdx % 2 === 0;
+              await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, nextLbMatchId), {
+                [isTeam1 ? 'team1' : 'team2']: winningTeam
+              });
+            } else if (round >= 1) {
+              // If no more LB rounds, winner of LB goes to Grand Final
+              await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, 'gf-1'), {
+                team2: winningTeam
+              });
+            }
+          }
+          
+          // If WB Final completed (last round of WB), winner goes to GF team1
+          const totalWbRounds = Math.ceil(Math.log2(selectedTournament.players.length / 2));
+          if (matchId === `wb-${totalWbRounds}-0`) {
+             await updateDoc(doc(db, `tournaments/${selectedTournament.id}/matches`, 'gf-1'), {
+                team1: winningTeam
+              });
+          }
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `tournaments/${selectedTournament.id}/matches/${matchId}`);
     }
@@ -581,12 +987,14 @@ export default function App() {
                 }}
                 onDelete={() => deleteTournament(selectedTournament.id!)}
                 onUpdate={(updates) => updateTournament(selectedTournament.id!, updates)}
+                isCreator={user?.uid === selectedTournament.creatorId}
               />
             )}
 
             {view === 'match' && selectedTournament && activeMatch && (
               <MatchScorer 
                 match={activeMatch}
+                tournament={selectedTournament}
                 onBack={() => setView('detail')}
                 onUpdate={(updates) => updateMatchScore(activeMatch.id!, updates)}
                 pointsToPlay={selectedTournament.pointsToPlay || 24}
@@ -602,16 +1010,19 @@ export default function App() {
 
 const MODE_DESCRIPTIONS: Record<GameMode, string> = {
   [GameMode.SINGLE_ELIMINATION]: "Knockout format where the winner advances and the loser is eliminated.",
+  [GameMode.DOUBLE_ELIMINATION]: "A knockout format where you must lose two matches to be eliminated.",
+  [GameMode.ROUND_ROBIN]: "A mix of Swiss stage followed by a playoff bracket (Single or Double Elimination).",
+  [GameMode.SWISS_SYSTEM]: "Non-eliminating format where you play opponents with a similar win/loss record.",
   [GameMode.NORMAL_AMERICANO]: "All players play with everyone else exactly one time.",
   [GameMode.MIX_AMERICANO]: "Teams are drawn with one woman and one man. Requires equal gender distribution (max 24 players).",
-  [GameMode.MEXICANO]: "Like Americano but results in more even games. New rounds are generated based on current scoreboard standings.",
-  [GameMode.MIXICANO]: "Like Mexicano but teams are always drawn as a woman and a man.",
+  [GameMode.MEXICANO]: "Starts with an Americano qualifier round, then switches to dynamic Mexicano matchmaking.",
   [GameMode.SUPER_MEXICANO]: "Like Mexicano but with extra points awarded for playing on (or closer to) the winning court.",
   [GameMode.TEAM_AMERICANO]: "Fixed teams play against all other teams exactly one time.",
-  [GameMode.TEAM_MEXICANO]: "Mexicano format played with fixed teams."
+  [GameMode.TEAM_MEXICANO]: "Mexicano format played with fixed teams.",
+  [GameMode.MIXED_MEXICANO]: "Dynamic mixed matchmaking based on leaderboard rankings."
 };
 
-function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCreate: (name: string, mode: GameMode, players: Player[], courtsCount: number, pointsToPlay: number) => Promise<void> }) {
+function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCreate: (name: string, mode: GameMode, players: Player[], courtsCount: number, pointsToPlay: number, numberOfMatches?: number, swissPools?: number, playoffTeams?: number, playoffType?: 'single' | 'double') => Promise<void> }) {
   const [name, setName] = useState('');
   const [mode, setMode] = useState<GameMode>(GameMode.NORMAL_AMERICANO);
   const [courtsCount, setCourtsCount] = useState(1);
@@ -624,15 +1035,87 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
     { name: '', gender: 'man' },
     { name: '', gender: 'woman' }
   ]);
+  const [customMatchCount, setCustomMatchCount] = useState<number | null>(null);
+  const [swissPools, setSwissPools] = useState(1);
+  const [playoffTeams, setPlayoffTeams] = useState(4);
+  const [playoffType, setPlayoffType] = useState<'single' | 'double'>('single');
+  const [notification, setNotification] = useState<{ message: string, type: 'error' | 'warning' } | null>(null);
 
-  const isTeamMode = mode === GameMode.TEAM_AMERICANO || mode === GameMode.TEAM_MEXICANO;
-  const isMixMode = mode === GameMode.MIX_AMERICANO || mode === GameMode.MIXICANO;
+  const isTeamMode = mode === GameMode.TEAM_AMERICANO || mode === GameMode.TEAM_MEXICANO || mode === GameMode.ROUND_ROBIN || mode === GameMode.DOUBLE_ELIMINATION || mode === GameMode.SWISS_SYSTEM || mode === GameMode.SINGLE_ELIMINATION;
+  const isMixMode = mode === GameMode.MIX_AMERICANO || mode === GameMode.MIXED_MEXICANO;
+  const isAmericanoVariant = mode === GameMode.NORMAL_AMERICANO || mode === GameMode.MEXICANO || mode === GameMode.SUPER_MEXICANO || mode === GameMode.MIXED_MEXICANO;
+
+  // Calculate default matches
+  const defaultMatches = useMemo(() => {
+    if (isTeamMode) {
+      const teamsCount = Math.floor(players.length / 2);
+      if (mode === GameMode.SINGLE_ELIMINATION) {
+        return teamsCount > 1 ? teamsCount - 1 : 0;
+      }
+      if (mode === GameMode.DOUBLE_ELIMINATION) {
+        return teamsCount > 1 ? (teamsCount - 1) * 2 + 1 : 0;
+      }
+      if (mode === GameMode.TEAM_AMERICANO || mode === GameMode.ROUND_ROBIN || mode === GameMode.SWISS_SYSTEM) {
+        if (teamsCount <= 1) return 0;
+        const n = teamsCount % 2 === 0 ? teamsCount : teamsCount + 1;
+        const rounds = n - 1;
+        const matchesPerRound = Math.floor(teamsCount / 2);
+        return rounds * matchesPerRound;
+      }
+      return 1; // Default for elimination
+    } else {
+      if (mode === GameMode.NORMAL_AMERICANO || mode === GameMode.MEXICANO || mode === GameMode.SUPER_MEXICANO) {
+        if (players.length < 4) return 0;
+        return Math.floor((players.length * (players.length - 1)) / 4);
+      }
+      if (isMixMode) {
+        const men = players.filter(p => p.gender === 'man').length;
+        const women = players.filter(p => p.gender === 'woman').length;
+        const P = Math.min(men, women);
+        if (P < 2) return 0;
+        if (mode === GameMode.MIXED_MEXICANO) {
+           const courts = Math.min(Math.floor(men / 2), Math.floor(women / 2));
+           return courts * (numberOfMatches || 1);
+        }
+        return Math.floor((P * P) / 2);
+      }
+    }
+    return 1;
+  }, [players.length, mode, isTeamMode, isMixMode]);
+
+  const currentMatchCount = customMatchCount !== null ? customMatchCount : defaultMatches;
 
   const addPlayer = () => {
     if (isTeamMode) {
+      if (players.length / 2 >= 16) return;
       setPlayers([...players, { name: '', gender: 'man' }, { name: '', gender: 'man' }]);
+    } else if (isMixMode) {
+      if (players.length >= 32) return;
+      setPlayers([...players, { name: '', gender: 'man' }, { name: '', gender: 'woman' }]);
     } else {
+      if (players.length >= 32) return;
       setPlayers([...players, { name: '', gender: players.length % 2 === 0 ? 'man' : 'woman' }]);
+    }
+  };
+
+  const removeTeam = (teamIdx: number) => {
+    const next = [...players];
+    next.splice(teamIdx * 2, 2);
+    setPlayers(next);
+  };
+
+  const removePlayer = (idx: number) => {
+    if (isMixMode) {
+      const next = [...players];
+      const pairIdx = idx % 2 === 0 ? idx : idx - 1;
+      if (pairIdx >= 0 && pairIdx + 1 < next.length) {
+        next.splice(pairIdx, 2);
+        setPlayers(next);
+      }
+    } else {
+      const next = [...players];
+      next.splice(idx, 1);
+      setPlayers(next);
     }
   };
 
@@ -648,43 +1131,70 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
     setPlayers(next);
   };
 
+  const updateTeamName = (teamIdx: number, val: string) => {
+    const next = [...players];
+    next[teamIdx * 2] = { ...next[teamIdx * 2], teamName: val };
+    if (next[teamIdx * 2 + 1]) {
+      next[teamIdx * 2 + 1] = { ...next[teamIdx * 2 + 1], teamName: val };
+    }
+    setPlayers(next);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const validPlayers = players.filter(p => p.name.trim() !== '');
+    setNotification(null);
+    
+    // Map empty names to default "PLAYER X" and assign default team names if empty
+    const validPlayers = players.map((p, i) => {
+      const teamIdx = Math.floor(i / 2);
+      const player: any = {
+        name: p.name.trim() || `PLAYER ${i + 1}`,
+        gender: p.gender
+      };
+      if (isTeamMode) {
+        player.teamName = p.teamName?.trim() || `TEAM ${teamIdx + 1}`;
+      }
+      return player;
+    });
     
     if (isMixMode) {
       const men = validPlayers.filter(p => p.gender === 'man').length;
       const women = validPlayers.filter(p => p.gender === 'woman').length;
       if (men !== women) {
-        alert(`Mix modes require an equal number of men and women. Current: ${men} Men, ${women} Women.`);
+        setNotification({ message: `Mix modes require an equal number of men and women. Current: ${men} Men, ${women} Women.`, type: 'error' });
         return;
       }
       if (validPlayers.length > 24) {
-        alert('Max 24 players for Mix Americano.');
+        setNotification({ message: 'Max 24 players for Mix Americano.', type: 'error' });
         return;
       }
     }
 
     if (isTeamMode && validPlayers.length % 2 !== 0) {
-      alert('Team modes require 2 players per team. Please ensure all teams have 2 players.');
+      setNotification({ message: 'Team modes require 2 players per team. Please ensure all teams have 2 players.', type: 'error' });
       return;
     }
 
     if (!name.trim()) {
-      alert('Please enter a tournament name.');
+      setNotification({ message: 'Please enter a tournament name.', type: 'error' });
       return;
     }
 
     if (validPlayers.length < 4) {
-      alert('Please enter at least 4 players to start a tournament.');
+      setNotification({ message: 'Please enter at least 4 players to start a tournament.', type: 'error' });
       return;
+    }
+
+    if (isAmericanoVariant && courtsCount === 2 && (validPlayers.length === 5 || validPlayers.length === 6 || validPlayers.length === 7)) {
+      setNotification({ message: "With 5-7 players, only 1 court can be used. The second court will be unused.", type: 'warning' });
     }
 
     setIsCreating(true);
     try {
-      await onCreate(name, mode, validPlayers, courtsCount, pointsToPlay);
+      await onCreate(name, mode, validPlayers, courtsCount, pointsToPlay, customMatchCount || undefined, swissPools, playoffTeams, playoffType);
     } catch (err) {
       console.error('Submit error:', err);
+      setNotification({ message: 'Failed to create tournament. Please try again.', type: 'error' });
     } finally {
       setIsCreating(false);
     }
@@ -696,7 +1206,7 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-3xl mx-auto"
+      className="max-w-5xl mx-auto"
     >
       <div className="flex items-center gap-6 mb-12">
         <button onClick={onCancel} className="p-3 bg-surface-container-low rounded-xl hover:bg-surface-container-high transition-all">
@@ -710,33 +1220,35 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
 
       <form onSubmit={handleSubmit} className="space-y-10">
         <div className="bg-surface-container-lowest p-10 rounded-2xl shadow-sm space-y-10 border border-on-surface/5">
-          <div>
-            <label className="label-sm mb-3 block">Tournament Name</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="E.G. SUMMER PADEL OPEN"
-              className="w-full px-6 py-5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary-container outline-none transition-all font-medium text-on-surface placeholder:text-on-surface/20"
-              required
-            />
-          </div>
+          
+          {/* Top Row: Name, Courts, Points */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
+            <div className="lg:col-span-5">
+              <label className="label-sm mb-3 block">Tournament Name</label>
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="E.G. SUMMER PADEL OPEN"
+                className="w-full px-6 h-16 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary-container outline-none transition-all font-medium text-on-surface placeholder:text-on-surface/20"
+                required
+              />
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-            <div>
+            <div className="lg:col-span-3">
               <label className="label-sm mb-3 block">Courts Count (1-15)</label>
-              <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit">
+              <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
                 <button 
                   type="button"
                   onClick={() => {
                     setDirection(-1);
                     setCourtsCount(Math.max(1, courtsCount - 1));
                   }}
-                  className="w-12 h-12 bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                  className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
                 >
                   <Minus className="w-5 h-5" />
                 </button>
-                <div className="w-16 h-12 flex items-center justify-center overflow-hidden relative">
+                <div className="w-12 h-full flex items-center justify-center overflow-hidden relative">
                   <AnimatePresence mode="popLayout" custom={direction}>
                     <motion.span
                       key={courtsCount}
@@ -757,46 +1269,57 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
                     setDirection(1);
                     setCourtsCount(Math.min(15, courtsCount + 1));
                   }}
-                  className="w-12 h-12 bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                  className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
                 >
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
             </div>
-            <div>
-              <label className="label-sm mb-6 block">Points to Play</label>
-              <div className="relative pt-8 pb-4 px-2">
-                {/* Toggle Line */}
-                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-on-surface/10 rounded-full -translate-y-1/2" />
+
+            <div className="lg:col-span-4">
+              <label className="label-sm mb-3 block">Points to Play</label>
+              <div className="relative w-full h-16">
+                {/* Background Line */}
+                <div className="absolute top-[70%] left-[10%] right-[10%] h-1.5 bg-surface-variant rounded-full -translate-y-1/2" />
                 
-                {/* Points Markers */}
-                <div className="relative flex justify-between items-center h-1">
+                {/* Buttons */}
+                <div className="absolute inset-0 flex items-center w-full">
                   {[16, 21, 24, 31, 32].map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPointsToPlay(p)}
-                      className="relative z-10 flex flex-col items-center group"
+                      className="relative z-10 flex flex-col items-center justify-center h-full group outline-none cursor-pointer"
+                      style={{ width: '20%' }}
                     >
-                      <div className="w-3 h-3 rounded-full bg-on-surface/10 group-hover:bg-on-surface/20 transition-all duration-300" />
-                      <span className={`absolute -top-8 text-xs font-bold transition-all duration-300 ${pointsToPlay === p ? 'text-primary scale-110' : 'text-on-surface/40'}`}>
+                      {/* Label */}
+                      <span className={`absolute top-0 text-sm font-bold transition-all duration-300 ${pointsToPlay === p ? 'text-primary scale-110' : 'text-on-surface/40 group-hover:text-on-surface/60'}`}>
                         {p}
                       </span>
+                      {/* Node Circle */}
+                      <div className={`absolute top-[70%] -translate-y-1/2 w-4 h-4 rounded-full transition-colors duration-300 ${pointsToPlay === p ? 'bg-transparent' : 'bg-surface-variant'}`} />
                     </button>
                   ))}
                 </div>
 
-                {/* Rolling Ball Animation */}
+                {/* Animated Ball */}
                 <motion.div
-                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none z-20"
+                  className="absolute top-[70%] -translate-y-1/2 pointer-events-none z-20 flex items-center justify-center"
+                  style={{ width: '20%' }}
                   initial={false}
                   animate={{ 
-                    left: `${[16, 21, 24, 31, 32].indexOf(pointsToPlay) * 25}%`,
-                    rotate: pointsToPlay * 20
+                    left: `${[16, 21, 24, 31, 32].indexOf(pointsToPlay) * 20}%`,
                   }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 >
-                  <PadelBall className="w-8 h-8 -ml-4 text-primary" />
+                  <div className="bg-surface-container-lowest rounded-full p-1 shadow-sm">
+                    <motion.div
+                      animate={{ rotate: pointsToPlay * 15 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    >
+                      <PadelBall className="w-6 h-6 text-primary" />
+                    </motion.div>
+                  </div>
                 </motion.div>
               </div>
             </div>
@@ -804,93 +1327,272 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
 
           <div>
             <label className="label-sm mb-4 block">Game Mode</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Object.values(GameMode).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={`p-6 rounded-2xl border-none text-left transition-all flex flex-col gap-3 ${mode === m ? 'bg-primary-container ring-2 ring-primary' : 'bg-surface-container-low hover:bg-surface-container-high'}`}
-                >
-                  <span className="font-bold text-sm text-on-surface">{m}</span>
-                  <p className="text-xs leading-relaxed text-on-surface/60 font-medium">
-                    {MODE_DESCRIPTIONS[m]}
-                  </p>
-                </button>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  id: 'Single Elimination',
+                  title: 'Tournament',
+                  description: 'Knockout format where the winner advances and the loser is eliminated.',
+                  modes: [GameMode.SINGLE_ELIMINATION, GameMode.DOUBLE_ELIMINATION, GameMode.ROUND_ROBIN, GameMode.SWISS_SYSTEM]
+                },
+                {
+                  id: 'Americano',
+                  title: 'Americano',
+                  description: 'All players play with everyone else exactly one time.',
+                  modes: [GameMode.NORMAL_AMERICANO, GameMode.MIX_AMERICANO, GameMode.TEAM_AMERICANO, GameMode.SWISS_SYSTEM]
+                },
+                {
+                  id: 'Mexicano',
+                  title: 'Mexicano',
+                  description: 'Like Americano but results in more even games based on standings.',
+                  modes: [GameMode.MEXICANO, GameMode.SUPER_MEXICANO, GameMode.TEAM_MEXICANO, GameMode.MIXED_MEXICANO]
+                }
+              ].map((cat) => {
+                const isSelected = cat.modes.includes(mode);
+                return (
+                  <div
+                    key={cat.id}
+                    className={`p-6 rounded-2xl border-none text-left transition-all flex flex-col gap-4 ${isSelected ? 'bg-primary-container ring-2 ring-primary' : 'bg-surface-container-low hover:bg-surface-container-high'}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setMode(cat.modes[0])}
+                      className="text-left outline-none flex-1"
+                    >
+                      <span className="font-bold text-lg text-on-surface block mb-2">{cat.title}</span>
+                      <p className="text-sm leading-relaxed text-on-surface/70 font-medium">
+                        {isSelected ? MODE_DESCRIPTIONS[mode] : cat.description}
+                      </p>
+                    </button>
+
+                    {isSelected && cat.modes.length > 1 && (
+                      <div className="pt-4 border-t border-on-surface/10 relative">
+                        <select
+                          value={mode}
+                          onChange={(e) => setMode(e.target.value as GameMode)}
+                          className="w-full bg-surface-container-lowest text-on-surface text-sm font-bold px-4 py-3 rounded-xl outline-none appearance-none cursor-pointer shadow-sm"
+                        >
+                          {cat.modes.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <div className="absolute right-4 top-[55%] pointer-events-none">
+                          <ChevronDown className="w-4 h-4 text-on-surface/50" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            
+            <div className="mt-10">
+              <label className="label-sm mb-3 block">Matches per Round</label>
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
+                  <button 
+                    type="button"
+                    onClick={() => setCustomMatchCount(Math.max(1, currentMatchCount - 1))}
+                    className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <div className="w-16 h-full flex items-center justify-center font-bold text-2xl text-on-surface">
+                    {currentMatchCount}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setCustomMatchCount(currentMatchCount + 1)}
+                    className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+                {customMatchCount !== null && customMatchCount !== defaultMatches && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-surface-container-low px-4 py-3 rounded-xl">
+                    <span className="text-sm font-medium text-on-surface/60">
+                      {customMatchCount > defaultMatches 
+                        ? "This will result in a player may match with or against same player." 
+                        : "This will result in a player may not match with or against some player."}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomMatchCount(null)}
+                      className="text-xs font-bold text-primary hover:text-primary/80 transition-all underline underline-offset-4"
+                    >
+                      Return to default ({defaultMatches})
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {mode === GameMode.ROUND_ROBIN && (
+              <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="label-sm mb-3 block">Swiss Stage Pools</label>
+                  <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
+                    <button 
+                      type="button"
+                      onClick={() => setSwissPools(Math.max(1, swissPools - 1))}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <div className="w-12 h-full flex items-center justify-center font-bold text-xl text-on-surface">
+                      {swissPools}
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setSwissPools(swissPools + 1)}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="label-sm mb-3 block">Teams to Playoff</label>
+                  <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
+                    <button 
+                      type="button"
+                      onClick={() => setPlayoffTeams(Math.max(2, playoffTeams - 1))}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <div className="w-12 h-full flex items-center justify-center font-bold text-xl text-on-surface">
+                      {playoffTeams}
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setPlayoffTeams(playoffTeams + 1)}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="label-sm mb-3 block">Playoff Type</label>
+                  <select 
+                    value={playoffType}
+                    onChange={(e) => setPlayoffType(e.target.value as 'single' | 'double')}
+                    className="w-full h-16 bg-surface-container-low text-on-surface text-sm font-bold px-4 rounded-xl outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="single">Single Elimination</option>
+                    <option value="double">Double Elimination</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-8">
               <label className="label-sm">
-                {isTeamMode ? 'Teams (Max 16 Teams)' : 'Players (Min 4)'}
+                {isTeamMode ? 'Teams (Max 16 Teams)' : 'Players (Max 32)'}
               </label>
               <button 
                 type="button" 
                 onClick={addPlayer}
-                className="bg-on-surface text-surface px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-on-surface/90 transition-all shadow-sm"
+                disabled={isTeamMode ? players.length / 2 >= 16 : players.length >= 32}
+                className="bg-on-surface text-surface px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-on-surface/90 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isTeamMode ? '+ Add Team' : '+ Add Player'}
               </button>
             </div>
-            <div className="space-y-4">
-              {isTeamMode ? (
-                Array.from({ length: players.length / 2 }).map((_, teamIdx) => (
-                  <div key={teamIdx} className="p-8 bg-surface-container-low rounded-2xl space-y-6">
-                    <span className="label-sm text-on-surface/40">Team {teamIdx + 1}</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {isTeamMode ? (
+              <div className="space-y-3">
+                {Array.from({ length: Math.floor(players.length / 2) }).map((_, teamIdx) => (
+                  <div key={teamIdx} className="flex flex-col md:flex-row items-center gap-4">
+                    <input 
+                      type="text"
+                      value={players[teamIdx * 2].teamName || ''}
+                      onChange={(e) => updateTeamName(teamIdx, e.target.value)}
+                      placeholder={`TEAM ${teamIdx + 1}`}
+                      className="w-full md:w-48 bg-transparent border-none focus:ring-0 outline-none transition-all font-bold text-xl text-on-surface placeholder:text-on-surface/40 p-0"
+                    />
+                    <div className="flex-1 flex flex-col md:flex-row items-center gap-2 bg-surface-container-low p-2 rounded-xl w-full">
                       <input 
                         type="text"
                         value={players[teamIdx * 2].name}
                         onChange={(e) => updatePlayer(teamIdx * 2, e.target.value)}
-                        placeholder="PLAYER 1"
-                        className="px-5 py-4 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary-container outline-none transition-all font-medium text-on-surface placeholder:text-on-surface/20"
+                        placeholder={`PLAYER ${teamIdx * 2 + 1}`}
+                        className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 outline-none transition-all font-medium text-sm text-on-surface placeholder:text-on-surface/30 min-w-0 w-full"
                       />
+                      <div className="w-full md:w-px h-px md:h-6 bg-on-surface/10" />
                       <input 
                         type="text"
                         value={players[teamIdx * 2 + 1].name}
                         onChange={(e) => updatePlayer(teamIdx * 2 + 1, e.target.value)}
-                        placeholder="PLAYER 2"
-                        className="px-5 py-4 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary-container outline-none transition-all font-medium text-on-surface placeholder:text-on-surface/20"
+                        placeholder={`PLAYER ${teamIdx * 2 + 2}`}
+                        className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 outline-none transition-all font-medium text-sm text-on-surface placeholder:text-on-surface/30 min-w-0 w-full"
                       />
+                      <button
+                        type="button"
+                        onClick={() => removeTeam(teamIdx)}
+                        className="p-2 text-on-surface/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all shrink-0 self-end md:self-auto"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                ))
-              ) : (
-                players.map((p, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {players.map((p, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-surface-container-low p-2 rounded-xl">
                     <input 
                       type="text"
                       value={p.name}
                       onChange={(e) => updatePlayer(idx, e.target.value)}
                       placeholder={`PLAYER ${idx + 1}`}
-                      className="flex-1 px-5 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary-container outline-none transition-all font-medium text-on-surface placeholder:text-on-surface/20"
+                      className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 outline-none transition-all font-medium text-sm text-on-surface placeholder:text-on-surface/30 min-w-0"
                     />
-                    {(isMixMode || true) && (
-                      <div className="flex bg-surface-container-low p-1.5 rounded-xl shrink-0">
+                    {isMixMode && (
+                      <div className="flex bg-surface-container-lowest p-1 rounded-lg shrink-0 shadow-sm">
                         <button
                           type="button"
                           onClick={() => updateGender(idx, 'man')}
-                          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${p.gender === 'man' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40'}`}
+                          className={`p-1.5 rounded-md transition-all ${p.gender === 'man' ? 'bg-blue-500/10 text-blue-500' : 'text-on-surface/30 hover:text-blue-400'}`}
+                          title="Man"
                         >
-                          Man
+                          <ManIcon className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => updateGender(idx, 'woman')}
-                          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${p.gender === 'woman' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40'}`}
+                          className={`p-1.5 rounded-md transition-all ${p.gender === 'woman' ? 'bg-pink-500/10 text-pink-500' : 'text-on-surface/30 hover:text-pink-400'}`}
+                          title="Woman"
                         >
-                          Woman
+                          <WomanIcon className="w-4 h-4" />
                         </button>
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => removePlayer(idx)}
+                      className="p-2 text-on-surface/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {isAmericanoVariant && courtsCount === 2 && [5, 6, 7].includes(players.length) && (
+          <div className="bg-amber-500/10 text-amber-600 p-4 rounded-xl flex items-start gap-3 text-sm font-medium">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p>
+              You have selected 2 courts but only have {players.length} players. At least 8 players are required to fully utilize 2 courts. The second court will not be used.
+            </p>
+          </div>
+        )}
 
         <button 
           type="submit"
@@ -906,13 +1608,30 @@ function TournamentCreator({ onCancel, onCreate }: { onCancel: () => void, onCre
             </>
           )}
         </button>
+
+        {notification && (
+          <div className={`mt-8 p-6 rounded-2xl border flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 ${notification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}>
+            <AlertCircle className="w-6 h-6 flex-shrink-0" />
+            <p className="font-bold">{notification.message}</p>
+            <button onClick={() => setNotification(null)} className="ml-auto p-2 hover:bg-on-surface/5 rounded-xl transition-all">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </form>
     </motion.div>
   );
 }
 
-function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete, onUpdate }: { tournament: Tournament, matches: Match[], onBack: () => void, onSelectMatch: (m: Match) => void, onDelete: () => void, onUpdate: (updates: Partial<Tournament>) => void }) {
-  const [tab, setTab] = useState<'matches' | 'leaderboard'>('matches');
+function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete, onUpdate, isCreator }: { tournament: Tournament, matches: Match[], onBack: () => void, onSelectMatch: (m: Match) => void, onDelete: () => void, onUpdate: (updates: Partial<Tournament>) => void, isCreator: boolean }) {
+  const isRoundBasedMode = [
+    GameMode.MEXICANO, 
+    GameMode.SUPER_MEXICANO,
+    GameMode.TEAM_MEXICANO,
+    GameMode.MIXED_MEXICANO
+  ].includes(tournament.mode);
+
+  const [tab, setTab] = useState<string>(isRoundBasedMode ? (tournament.currentRound?.toString() || '1') : 'matches');
   const [showSettings, setShowSettings] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showShareTooltip, setShowShareTooltip] = useState(false);
@@ -948,13 +1667,31 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
     setShowSettings(false);
   };
 
+  const getTeamName = (playerNames: string[]) => {
+    if (!tournament.mode.includes('Team')) return playerNames.join(' & ');
+    const p = tournament.players.find(p => p.name === playerNames[0]);
+    return p?.teamName || playerNames.join(' & ');
+  };
+
   const leaderboard = useMemo(() => {
     const stats: Record<string, PlayerStats> = {};
     tournament.players.forEach(p => {
-      stats[p.name] = { name: p.name, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
+      stats[p.name] = { 
+        name: p.name, 
+        wins: 0, 
+        losses: 0, 
+        ties: 0, 
+        pointsFor: 0, 
+        pointsAgainst: 0, 
+        missedPoints: 0, 
+        matchesPlayed: 0 
+      };
     });
 
-    matches.filter(m => m.status === MatchStatus.COMPLETED).forEach(m => {
+    const completedMatches = matches.filter(m => m.status === MatchStatus.COMPLETED);
+    let totalPointsAllMatches = 0;
+
+    completedMatches.forEach(m => {
       let t1Points = m.sets1.reduce((a, b) => a + b, 0) + m.score1;
       let t2Points = m.sets2.reduce((a, b) => a + b, 0) + m.score2;
 
@@ -965,12 +1702,16 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
         t2Points += bonus;
       }
 
+      totalPointsAllMatches += (t1Points + t2Points);
+
       m.team1.forEach(p => {
         if (stats[p]) {
           stats[p].pointsFor += t1Points;
           stats[p].pointsAgainst += t2Points;
+          stats[p].matchesPlayed++;
           if (m.winner === 1) stats[p].wins++;
           else if (m.winner === 2) stats[p].losses++;
+          else if (t1Points === t2Points) stats[p].ties++;
         }
       });
 
@@ -978,35 +1719,189 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
         if (stats[p]) {
           stats[p].pointsFor += t2Points;
           stats[p].pointsAgainst += t1Points;
+          stats[p].matchesPlayed++;
           if (m.winner === 2) stats[p].wins++;
           else if (m.winner === 1) stats[p].losses++;
+          else if (t1Points === t2Points) stats[p].ties++;
         }
       });
     });
 
-    return Object.values(stats).sort((a, b) => b.wins - a.wins || (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst));
+    const maxMatches = Math.max(...Object.values(stats).map(s => s.matchesPlayed), 0);
+    const avgPointsPerMatch = completedMatches.length > 0 ? totalPointsAllMatches / completedMatches.length : 0;
+
+    const modesWithNormalization = [
+      GameMode.TEAM_AMERICANO,
+      GameMode.ROUND_ROBIN,
+      GameMode.SWISS_SYSTEM,
+      GameMode.NORMAL_AMERICANO,
+      GameMode.MIX_AMERICANO,
+      GameMode.MEXICANO,
+      GameMode.SUPER_MEXICANO,
+      GameMode.TEAM_MEXICANO,
+      GameMode.MIXED_MEXICANO
+    ];
+
+    Object.values(stats).forEach(s => {
+      if (modesWithNormalization.includes(tournament.mode) && s.matchesPlayed > 0 && maxMatches > 0) {
+        // New Formula: Scorefinal = Ptotal * (Mplayed / Mmax)
+        // We want to calculate the adjusted total, so we can store the difference in missedPoints
+        // Scorefinal = s.pointsFor * (s.matchesPlayed / maxMatches)
+        // missedPoints = Scorefinal - s.pointsFor
+        const adjustedTotal = s.pointsFor * (maxMatches / s.matchesPlayed);
+        s.missedPoints = Math.round(adjustedTotal - s.pointsFor);
+      } else {
+        s.missedPoints = 0; // No normalization for other modes or if no matches played
+      }
+    });
+
+    return Object.values(stats).sort((a, b) => {
+      const aTotal = a.pointsFor + a.missedPoints;
+      const bTotal = b.pointsFor + b.missedPoints;
+      const aDiff = a.pointsFor - a.pointsAgainst;
+      const bDiff = b.pointsFor - b.pointsAgainst;
+      
+      return bTotal - aTotal || b.wins - a.wins || bDiff - aDiff;
+    });
   }, [tournament.players, matches]);
 
   const generateNextRound = async () => {
     const currentRound = tournament.currentRound || 1;
     const nextRound = currentRound + 1;
     
-    // Mexicano logic: sort players by current leaderboard and pair them up
-    // 1st & 4th vs 2nd & 3rd (or similar to get even games)
-    const sortedPlayers = leaderboard.map(s => s.name);
+    // Mexicano logic: sort players by matches played (ascending) then by points (descending) and pair them up
+    const sortedPlayers = [...leaderboard].sort((a, b) => a.matchesPlayed - b.matchesPlayed || (b.pointsFor + b.missedPoints) - (a.pointsFor + a.missedPoints)).map(s => s.name);
     const matchPairs: { team1: string[], team2: string[] }[] = [];
 
-    if (tournament.mode === GameMode.MEXICANO || tournament.mode === GameMode.SUPER_MEXICANO || tournament.mode === GameMode.NORMAL_AMERICANO) {
+    if (tournament.mode === GameMode.SUPER_MEXICANO || (tournament.mode === GameMode.MEXICANO && currentRound > 1)) {
+      const playedMatches = new Set<string>();
+      matches.forEach(m => {
+        const k1 = [...m.team1].sort().join(',') + ' vs ' + [...m.team2].sort().join(',');
+        const k2 = [...m.team2].sort().join(',') + ' vs ' + [...m.team1].sort().join(',');
+        playedMatches.add(k1);
+        playedMatches.add(k2);
+      });
+
       for (let i = 0; i < sortedPlayers.length; i += 4) {
         if (i + 3 < sortedPlayers.length) {
-          // Pair 1st & 4th vs 2nd & 3rd for even games
-          matchPairs.push({
-            team1: [sortedPlayers[i], sortedPlayers[i+3]],
-            team2: [sortedPlayers[i+1], sortedPlayers[i+2]]
-          });
+          const p1 = sortedPlayers[i];
+          const p2 = sortedPlayers[i+1];
+          const p3 = sortedPlayers[i+2];
+          const p4 = sortedPlayers[i+3];
+
+          const options = [
+            { t1: [p1, p4], t2: [p2, p3] },
+            { t1: [p1, p3], t2: [p2, p4] },
+            { t1: [p1, p2], t2: [p3, p4] }
+          ];
+
+          let selected = options[0];
+          for (const opt of options) {
+            const key = [...opt.t1].sort().join(',') + ' vs ' + [...opt.t2].sort().join(',');
+            if (!playedMatches.has(key)) {
+              selected = opt;
+              break;
+            }
+          }
+          matchPairs.push({ team1: selected.t1, team2: selected.t2 });
         }
       }
-    } else if (tournament.mode === GameMode.MIXICANO || tournament.mode === GameMode.MIX_AMERICANO) {
+    } else if (tournament.mode === GameMode.MIXED_MEXICANO) {
+      const men = tournament.players.filter(p => p.gender === 'man');
+      const women = tournament.players.filter(p => p.gender === 'woman');
+      
+      const sortPlayers = (players: Player[]) => [...players].sort((a, b) => {
+        const statsA = leaderboard.find(s => s.name === a.name);
+        const statsB = leaderboard.find(s => s.name === b.name);
+        return (statsA?.matchesPlayed || 0) - (statsB?.matchesPlayed || 0) || 
+               ((statsB?.pointsFor || 0) + (statsB?.missedPoints || 0)) - ((statsA?.pointsFor || 0) + (statsA?.missedPoints || 0));
+      });
+
+      const sortedMen = sortPlayers(men);
+      const sortedWomen = sortPlayers(women);
+
+      const numCourts = Math.min(Math.floor(sortedMen.length / 2), Math.floor(sortedWomen.length / 2));
+      
+      for (let i = 0; i < numCourts; i++) {
+        const m1 = sortedMen[i * 2];
+        const m2 = sortedMen[i * 2 + 1];
+        const w1 = sortedWomen[i * 2];
+        const w2 = sortedWomen[i * 2 + 1];
+        
+        matchPairs.push({ team1: [m1.name, w2.name], team2: [m2.name, w1.name] });
+      }
+    } else if (tournament.mode === GameMode.NORMAL_AMERICANO || (tournament.mode === GameMode.MEXICANO && currentRound === 1)) {
+      const playerNames = tournament.players.map(p => p.name);
+      const n = playerNames.length;
+      const allPossiblePairs: [string, string][] = [];
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          allPossiblePairs.push([playerNames[i], playerNames[j]]);
+        }
+      }
+
+      const playedMatches = new Set<string>();
+      const pairUsageCount = new Map<string, number>();
+      allPossiblePairs.forEach(p => pairUsageCount.set([...p].sort().join(','), 0));
+
+      matches.forEach(m => {
+        const k1 = [...m.team1].sort().join(',') + ' vs ' + [...m.team2].sort().join(',');
+        const k2 = [...m.team2].sort().join(',') + ' vs ' + [...m.team1].sort().join(',');
+        playedMatches.add(k1);
+        playedMatches.add(k2);
+        pairUsageCount.set([...m.team1].sort().join(','), (pairUsageCount.get([...m.team1].sort().join(',')) || 0) + 1);
+        pairUsageCount.set([...m.team2].sort().join(','), (pairUsageCount.get([...m.team2].sort().join(',')) || 0) + 1);
+      });
+
+      const targetMatchesInRound = Math.floor(n / 4);
+      let matchesGenerated = 0;
+      const playersUsedInThisRound = new Set<string>();
+
+      while (matchesGenerated < targetMatchesInRound) {
+        const sortedPairs = [...allPossiblePairs].sort((a, b) => 
+          pairUsageCount.get([...a].sort().join(','))! - pairUsageCount.get([...b].sort().join(','))! || Math.random() - 0.5
+        );
+
+        let foundMatch = false;
+        for (let i = 0; i < sortedPairs.length; i++) {
+          const p1 = sortedPairs[i];
+          if (playersUsedInThisRound.has(p1[0]) || playersUsedInThisRound.has(p1[1])) continue;
+
+          for (let j = i + 1; j < sortedPairs.length; j++) {
+            const p2 = sortedPairs[j];
+            if (playersUsedInThisRound.has(p2[0]) || playersUsedInThisRound.has(p2[1])) continue;
+            
+            const playersInMatch = new Set([...p1, ...p2]);
+            if (playersInMatch.size !== 4) continue;
+            
+            const matchKey = [...p1].sort().join(',') + ' vs ' + [...p2].sort().join(',');
+            const reverseMatchKey = [...p2].sort().join(',') + ' vs ' + [...p1].sort().join(',');
+            if (playedMatches.has(matchKey) || playedMatches.has(reverseMatchKey)) continue;
+            
+            matchPairs.push({ team1: p1, team2: p2 });
+            playedMatches.add(matchKey);
+            pairUsageCount.set([...p1].sort().join(','), pairUsageCount.get([...p1].sort().join(','))! + 1);
+            pairUsageCount.set([...p2].sort().join(','), pairUsageCount.get([...p2].sort().join(','))! + 1);
+            playersUsedInThisRound.add(p1[0]);
+            playersUsedInThisRound.add(p1[1]);
+            playersUsedInThisRound.add(p2[0]);
+            playersUsedInThisRound.add(p2[1]);
+            foundMatch = true;
+            matchesGenerated++;
+            break;
+          }
+          if (foundMatch) break;
+        }
+        if (!foundMatch) break;
+      }
+    } else if (tournament.mode === GameMode.MIX_AMERICANO) {
+      const playedMatches = new Set<string>();
+      matches.forEach(m => {
+        const k1 = [...m.team1].sort().join(',') + ' vs ' + [...m.team2].sort().join(',');
+        const k2 = [...m.team2].sort().join(',') + ' vs ' + [...m.team1].sort().join(',');
+        playedMatches.add(k1);
+        playedMatches.add(k2);
+      });
       // Mixicano: 1st Man & 1st Woman vs 2nd Man & 2nd Woman (or similar)
       const men = tournament.players.filter(p => p.gender === 'man').map(p => p.name);
       const women = tournament.players.filter(p => p.gender === 'woman').map(p => p.name);
@@ -1023,40 +1918,146 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
         return (bStat?.wins || 0) - (aStat?.wins || 0);
       });
 
+      const targetMatchesInRound = Math.floor(Math.min(men.length, women.length) / 2);
+      let matchesGenerated = 0;
+      const playersUsedInThisRound = new Set<string>();
+
       for (let i = 0; i < sortedMen.length; i += 2) {
-        if (i + 1 < sortedMen.length) {
-          matchPairs.push({
-            team1: [sortedMen[i], sortedWomen[i]],
-            team2: [sortedMen[i+1], sortedWomen[i+1]]
-          });
+        if (i + 1 < sortedMen.length && matchesGenerated < targetMatchesInRound) {
+          const m1 = sortedMen[i];
+          const m2 = sortedMen[i+1];
+          const w1 = sortedWomen[i];
+          const w2 = sortedWomen[i+1];
+
+          const options = [
+            { t1: [m1, w1], t2: [m2, w2] },
+            { t1: [m1, w2], t2: [m2, w1] }
+          ];
+
+          let selected = options[0];
+          for (const opt of options) {
+            const key = [...opt.t1].sort().join(',') + ' vs ' + [...opt.t2].sort().join(',');
+            if (!playedMatches.has(key)) {
+              selected = opt;
+              break;
+            }
+          }
+          matchPairs.push({ team1: selected.t1, team2: selected.t2 });
+          matchesGenerated++;
+        }
+      }
+    } else if (tournament.mode === GameMode.TEAM_AMERICANO || tournament.mode === GameMode.ROUND_ROBIN || tournament.mode === GameMode.SWISS_SYSTEM) {
+      // Generate rounds using circle method
+      const teams = [];
+      for (let i = 0; i < tournament.players.length; i += 2) {
+        if (i + 1 < tournament.players.length) {
+          teams.push([tournament.players[i].name, tournament.players[i+1].name]);
+        }
+      }
+      const numTeams = teams.length;
+      const isOdd = numTeams % 2 !== 0;
+      const scheduleTeams = isOdd ? [...teams, ['BYE', 'BYE']] : [...teams];
+      const n = scheduleTeams.length;
+      
+      // Find the current round's schedule
+      const currentRound = tournament.currentRound || 1;
+      
+      // Rotate teams based on current round
+      for (let r = 0; r < currentRound; r++) {
+        scheduleTeams.splice(1, 0, scheduleTeams.pop()!);
+      }
+
+      for (let i = 0; i < n / 2; i++) {
+        const t1 = scheduleTeams[i];
+        const t2 = scheduleTeams[n - 1 - i];
+        if (t1[0] !== 'BYE' && t2[0] !== 'BYE') {
+          matchPairs.push({ team1: t1, team2: t2 });
         }
       }
     } else if (tournament.mode === GameMode.TEAM_MEXICANO) {
-      // Fixed teams Mexicano: 1st team vs 2nd team, 3rd vs 4th...
-      // We need to calculate team stats
-      const teamStats: Record<string, { name: string, wins: number, diff: number }> = {};
-      matches.filter(m => m.status === MatchStatus.COMPLETED).forEach(m => {
-        const t1 = m.team1.sort().join(' & ');
-        const t2 = m.team2.sort().join(' & ');
-        if (!teamStats[t1]) teamStats[t1] = { name: t1, wins: 0, diff: 0 };
-        if (!teamStats[t2]) teamStats[t2] = { name: t2, wins: 0, diff: 0 };
+      const teams: string[][] = [];
+      for (let i = 0; i < tournament.players.length; i += 2) {
+        if (i + 1 < tournament.players.length) {
+          teams.push([tournament.players[i].name, tournament.players[i+1].name]);
+        }
+      }
+
+      if (currentRound === 1) {
+        // Phase 1: Full Round Robin Qualifier
+        const numTeams = teams.length;
+        const isOdd = numTeams % 2 !== 0;
+        const scheduleTeams = isOdd ? [...teams, ['BYE', 'BYE']] : [...teams];
+        const n = scheduleTeams.length;
         
-        const t1Points = m.sets1.reduce((a, b) => a + b, 0) + m.score1;
-        const t2Points = m.sets2.reduce((a, b) => a + b, 0) + m.score2;
-        
-        teamStats[t1].diff += (t1Points - t2Points);
-        teamStats[t2].diff += (t2Points - t1Points);
-        if (m.winner === 1) teamStats[t1].wins++;
-        else if (m.winner === 2) teamStats[t2].wins++;
-      });
-      
-      const sortedTeams = Object.values(teamStats).sort((a, b) => b.wins - a.wins || b.diff - a.diff);
-      for (let i = 0; i < sortedTeams.length; i += 2) {
-        if (i + 1 < sortedTeams.length) {
-          matchPairs.push({
-            team1: sortedTeams[i].name.split(' & '),
-            team2: sortedTeams[i+1].name.split(' & ')
-          });
+        // Generate all rounds of the round robin
+        for (let r = 0; r < n - 1; r++) {
+          const roundTeams = [...scheduleTeams];
+          for (let rot = 0; rot < r; rot++) {
+            roundTeams.splice(1, 0, roundTeams.pop()!);
+          }
+          
+          for (let i = 0; i < n / 2; i++) {
+            const t1 = roundTeams[i];
+            const t2 = roundTeams[n - 1 - i];
+            if (t1[0] !== 'BYE' && t2[0] !== 'BYE') {
+              matchPairs.push({ team1: t1, team2: t2 });
+            }
+          }
+        }
+      } else {
+        // Phase 2: Dynamic Team Mexicano Matchmaking
+        const teamStats: Record<string, { name: string, wins: number, points: number, matches: number }> = {};
+        teams.forEach(t => {
+          const key = t.sort().join(' & ');
+          teamStats[key] = { name: key, wins: 0, points: 0, matches: 0 };
+        });
+
+        matches.filter(m => m.status === MatchStatus.COMPLETED).forEach(m => {
+          const t1 = m.team1.sort().join(' & ');
+          const t2 = m.team2.sort().join(' & ');
+          if (teamStats[t1]) {
+            const t1Points = m.sets1.reduce((a, b) => a + b, 0) + m.score1;
+            const t2Points = m.sets2.reduce((a, b) => a + b, 0) + m.score2;
+            teamStats[t1].points += t1Points;
+            teamStats[t1].matches++;
+            if (m.winner === 1) teamStats[t1].wins++;
+          }
+          if (teamStats[t2]) {
+            const t1Points = m.sets1.reduce((a, b) => a + b, 0) + m.score1;
+            const t2Points = m.sets2.reduce((a, b) => a + b, 0) + m.score2;
+            teamStats[t2].points += t2Points;
+            teamStats[t2].matches++;
+            if (m.winner === 2) teamStats[t2].wins++;
+          }
+        });
+
+        // Normalize points for sorting if needed (M+ rule)
+        const maxMatches = Math.max(...Object.values(teamStats).map(s => s.matches), 0);
+        const sortedTeams = Object.values(teamStats).sort((a, b) => {
+          const aNorm = a.matches > 0 ? a.points * (maxMatches / a.matches) : 0;
+          const bNorm = b.matches > 0 ? b.points * (maxMatches / b.matches) : 0;
+          return bNorm - aNorm || b.wins - a.wins;
+        });
+
+        // Determine active roster (if odd, one sits out)
+        let activeTeams = [...sortedTeams];
+        if (activeTeams.length % 2 !== 0) {
+          // Priority to play: fewest matches, then highest rank
+          const sitOutIdx = activeTeams.reduce((minIdx, curr, idx, arr) => {
+            if (curr.matches < arr[minIdx].matches) return idx;
+            if (curr.matches === arr[minIdx].matches && idx > minIdx) return idx; // lowest rank sits out
+            return minIdx;
+          }, 0);
+          activeTeams.splice(sitOutIdx, 1);
+        }
+
+        for (let i = 0; i < activeTeams.length; i += 2) {
+          if (i + 1 < activeTeams.length) {
+            matchPairs.push({
+              team1: activeTeams[i].name.split(' & '),
+              team2: activeTeams[i+1].name.split(' & ')
+            });
+          }
         }
       }
     }
@@ -1078,14 +2079,45 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
           court: i + 1
         });
       }
-      await updateDoc(doc(db, 'tournaments', tournament.id!), { currentRound: nextRound });
+      await onUpdate({ currentRound: nextRound });
+      setTab(nextRound.toString());
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `tournaments/${tournament.id}/matches`);
     }
   };
 
-  const isMexicanoMode = [GameMode.MEXICANO, GameMode.MIXICANO, GameMode.SUPER_MEXICANO, GameMode.TEAM_MEXICANO, GameMode.NORMAL_AMERICANO, GameMode.MIX_AMERICANO].includes(tournament.mode);
-  const allMatchesCompleted = matches.length > 0 && matches.every(m => m.status === MatchStatus.COMPLETED);
+  const matchesPerRound = useMemo(() => {
+    const n = tournament.players.length;
+    if (tournament.mode === GameMode.MIX_AMERICANO) {
+      const men = tournament.players.filter(p => p.gender === 'man').length;
+      const women = tournament.players.filter(p => p.gender === 'woman').length;
+      return Math.floor(Math.min(men, women) / 2);
+    }
+    return Math.floor(n / 4);
+  }, [tournament]);
+
+  const maxPossibleRounds = useMemo(() => {
+    if (!tournament.numberOfMatches || matchesPerRound === 0) return Infinity;
+    return Math.ceil(tournament.numberOfMatches / matchesPerRound);
+  }, [tournament.numberOfMatches, matchesPerRound]);
+
+  const currentRoundMatches = matches.filter(m => m.round === (tournament.currentRound || 1));
+  const currentRoundCompleted = currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.status === MatchStatus.COMPLETED);
+  const nextRoundExists = matches.some(m => m.round === (tournament.currentRound || 1) + 1);
+  const isLatestRound = tab === (tournament.currentRound || 1).toString();
+  const canGenerateNextRound = isCreator && isRoundBasedMode && currentRoundCompleted && !nextRoundExists && (tournament.currentRound || 1) < maxPossibleRounds && isLatestRound;
+  const canStartPlayoffs = isCreator && tournament.mode === GameMode.ROUND_ROBIN && currentRoundCompleted && (tournament.currentRound || 1) === tournament.numberOfMatches && !nextRoundExists && isLatestRound;
+
+  const maxRound = useMemo(() => {
+    const roundsFromMatches = matches.map(m => m.round || 1);
+    const tabRound = parseInt(tab);
+    return Math.max(
+      1, 
+      tournament.currentRound || 1, 
+      ...roundsFromMatches,
+      isNaN(tabRound) ? 1 : tabRound
+    );
+  }, [tournament.currentRound, matches, tab]);
 
   return (
     <motion.div 
@@ -1106,20 +2138,22 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
           <div>
             <div className="flex items-center gap-4 mb-3">
               <h2 className="text-4xl md:text-5xl font-bold text-on-surface tracking-tight">{tournament.name}</h2>
-              <button 
-                onClick={() => setShowSettings(true)}
-                className="p-2.5 rounded-xl text-on-surface/20 hover:text-on-surface hover:bg-surface-container-low transition-all"
-                title="Tournament Settings"
-              >
-                <Settings className="w-6 h-6" />
-              </button>
+              {isCreator && (
+                <button 
+                  onClick={() => setShowSettings(true)}
+                  className="p-2.5 rounded-xl text-on-surface/20 hover:text-on-surface hover:bg-surface-container-low transition-all"
+                  title="Tournament Settings"
+                >
+                  <Settings className="w-6 h-6" />
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-on-surface/40">
               <span className="px-3 py-1 rounded-xl bg-surface-container-low text-on-surface/60">{tournament.mode}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
               <span>{tournament.players.length} Players</span>
               <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
-              <span>Round {tournament.currentRound || 1}</span>
+              <span>Round {tab} of {maxPossibleRounds !== Infinity ? maxPossibleRounds : '?'}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
               <span>{tournament.courtsCount} Courts</span>
               <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
@@ -1149,14 +2183,16 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
               )}
             </AnimatePresence>
           </div>
-          <button 
-            onClick={() => setShowDeleteConfirm(true)}
-            className="p-4 rounded-xl bg-surface-container-low hover:bg-destructive/10 transition-all text-on-surface/60 hover:text-destructive"
-            title="Delete Tournament"
-          >
-            <Trash2 className="w-6 h-6" />
-          </button>
-          {isMexicanoMode && allMatchesCompleted && (
+          {isCreator && (
+            <button 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-4 rounded-xl bg-surface-container-low hover:bg-red-500/10 transition-all text-on-surface/60 hover:text-red-500"
+              title="Delete Tournament"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
+          )}
+          {canGenerateNextRound && (
             <button 
               onClick={generateNextRound}
               className="bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -1164,16 +2200,116 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
               Next Round
             </button>
           )}
+          {canStartPlayoffs && (
+            <button 
+              onClick={async () => {
+                const topTeamsCount = tournament.playoffTeams || 4;
+                // For Round Robin, we need to calculate team stats from Swiss stage
+                const teamStats: Record<string, { name: string, wins: number, diff: number }> = {};
+                matches.filter(m => m.status === MatchStatus.COMPLETED).forEach(m => {
+                  const t1 = m.team1.sort().join(' & ');
+                  const t2 = m.team2.sort().join(' & ');
+                  if (!teamStats[t1]) teamStats[t1] = { name: t1, wins: 0, diff: 0 };
+                  if (!teamStats[t2]) teamStats[t2] = { name: t2, wins: 0, diff: 0 };
+                  
+                  const t1Points = m.sets1.reduce((a, b) => a + b, 0) + m.score1;
+                  const t2Points = m.sets2.reduce((a, b) => a + b, 0) + m.score2;
+                  
+                  teamStats[t1].diff += (t1Points - t2Points);
+                  teamStats[t2].diff += (t2Points - t1Points);
+                  if (m.winner === 1) teamStats[t1].wins++;
+                  else if (m.winner === 2) teamStats[t2].wins++;
+                });
+                
+                const sortedTeams = Object.values(teamStats).sort((a, b) => b.wins - a.wins || b.diff - a.diff);
+                const topTeams = sortedTeams.slice(0, topTeamsCount).map(s => s.name.split(' & '));
+                
+                // Pad to power of 2
+                const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(topTeams.length)));
+                const paddedTeams = [...topTeams];
+                while (paddedTeams.length < nextPowerOf2) {
+                  paddedTeams.push(['BYE']);
+                }
+
+                const nextRound = (tournament.currentRound || 1) + 1;
+                const allBracketMatches: any[] = [];
+                
+                let currentRoundMatches = nextPowerOf2 / 2;
+                let roundNum = nextRound;
+                
+                while (currentRoundMatches >= 1) {
+                  for (let i = 0; i < currentRoundMatches; i++) {
+                    const matchId = `playoff-${roundNum}-${i}`;
+                    const nextMatchId = currentRoundMatches > 1 ? `playoff-${roundNum + 1}-${Math.floor(i / 2)}` : null;
+                    
+                    const matchData: any = {
+                      id: matchId,
+                      team1: roundNum === nextRound ? paddedTeams[i * 2] : ['TBD'],
+                      team2: roundNum === nextRound ? paddedTeams[i * 2 + 1] : ['TBD'],
+                      score1: 0,
+                      score2: 0,
+                      sets1: [],
+                      sets2: [],
+                      serverIndex: 0,
+                      status: MatchStatus.PENDING,
+                      round: roundNum,
+                      court: i + 1,
+                      matchIndex: i,
+                    };
+
+                    if (nextMatchId !== null) {
+                      matchData.nextMatchId = nextMatchId;
+                    }
+
+                    if (roundNum === nextRound) {
+                      if (matchData.team1[0] === 'BYE') {
+                        matchData.status = MatchStatus.COMPLETED;
+                        matchData.winner = 2;
+                        matchData.score2 = tournament.pointsToPlay || 21;
+                      } else if (matchData.team2[0] === 'BYE') {
+                        matchData.status = MatchStatus.COMPLETED;
+                        matchData.winner = 1;
+                        matchData.score1 = tournament.pointsToPlay || 21;
+                      }
+                    }
+
+                    allBracketMatches.push(matchData);
+                  }
+                  currentRoundMatches /= 2;
+                  roundNum++;
+                }
+
+                try {
+                  for (const m of allBracketMatches) {
+                    const { id, ...data } = m;
+                    await setDoc(doc(db, `tournaments/${tournament.id}/matches`, id), {
+                      ...data,
+                      tournamentId: tournament.id
+                    });
+                  }
+                  await updateDoc(doc(db, 'tournaments', tournament.id!), { currentRound: nextRound });
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.CREATE, `tournaments/${tournament.id}/matches`);
+                }
+              }}
+              className="bg-primary text-on-primary px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Start Playoffs
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="flex bg-surface-container-low p-1.5 rounded-2xl mb-12 w-fit">
-        <button 
-          onClick={() => setTab('matches')}
-          className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'matches' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-        >
-          Matches
-        </button>
+      <div className="flex bg-surface-container-low p-1.5 rounded-2xl mb-12 w-fit overflow-x-auto max-w-full no-scrollbar">
+        {Array.from({ length: maxRound }, (_, i) => (i + 1).toString()).map(r => (
+          <button 
+            key={r}
+            onClick={() => setTab(r)}
+            className={`px-8 py-3.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${tab === r ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+          >
+            Round {r}
+          </button>
+        ))}
         <button 
           onClick={() => setTab('leaderboard')}
           className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'leaderboard' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
@@ -1182,9 +2318,9 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
         </button>
       </div>
 
-      {tab === 'matches' ? (
+      {tab !== 'leaderboard' ? (
         <div className="grid grid-cols-1 gap-6">
-          {matches.map((m) => (
+          {matches.filter(m => m.round === parseInt(tab)).map((m) => (
             <motion.div 
               key={m.id}
               whileHover={{ y: -4 }}
@@ -1193,28 +2329,32 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
             >
               <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-container opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 items-center gap-8">
-                <div className="text-center sm:text-right">
-                  <p className="font-bold text-xl text-on-surface">{m.team1.join(' & ')}</p>
+                <div className="text-center sm:text-right flex flex-col gap-1">
+                  {m.team1.map((p, i) => (
+                    <p key={i} className="font-bold text-xl text-on-surface">{p}</p>
+                  ))}
                 </div>
                 <div className="flex flex-col items-center justify-center gap-2">
                   {m.court && <span className="label-sm text-on-surface/20">Court {m.court}</span>}
                   <div className="flex items-center justify-center gap-6">
                     <div className="flex items-center gap-2">
                       {m.sets1.map((s, i) => <span key={i} className="text-on-surface/20 font-bold text-sm">{s}</span>)}
-                      <span className={`text-4xl font-black ${m.status === MatchStatus.COMPLETED && m.score1 > m.score2 ? 'text-primary' : 'text-on-surface'}`}>{m.score1}</span>
+                      <span className={`text-4xl font-black ${m.status === MatchStatus.COMPLETED && m.score1 > m.score2 ? 'text-[#8A9A5B]' : 'text-on-surface'}`}>{m.score1}</span>
                     </div>
                     <span className="text-on-surface/10 font-bold text-2xl">:</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-4xl font-black ${m.status === MatchStatus.COMPLETED && m.score2 > m.score1 ? 'text-primary' : 'text-on-surface'}`}>{m.score2}</span>
+                      <span className={`text-4xl font-black ${m.status === MatchStatus.COMPLETED && m.score2 > m.score1 ? 'text-[#8A9A5B]' : 'text-on-surface'}`}>{m.score2}</span>
                       {m.sets2.map((s, i) => <span key={i} className="text-on-surface/20 font-bold text-sm">{s}</span>)}
                     </div>
                   </div>
                 </div>
-                <div className="text-center sm:text-left">
-                  <p className="font-bold text-xl text-on-surface">{m.team2.join(' & ')}</p>
+                <div className="text-center sm:text-left flex flex-col gap-1">
+                  {m.team2.map((p, i) => (
+                    <p key={i} className="font-bold text-xl text-on-surface">{p}</p>
+                  ))}
                 </div>
               </div>
-              <div className="ml-8 p-3 bg-surface-container-low rounded-xl group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+              <div className="ml-8 p-3 bg-surface-container-low rounded-xl group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors text-on-surface">
                 {m.status === MatchStatus.COMPLETED ? (
                   <CheckCircle className="w-6 h-6" />
                 ) : m.status === MatchStatus.IN_PROGRESS ? (
@@ -1234,27 +2374,56 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
                 <tr className="bg-surface-container-low border-b border-on-surface/5">
                   <th className="px-10 py-6 label-sm text-on-surface/40">Rank</th>
                   <th className="px-10 py-6 label-sm text-on-surface/40">Player</th>
-                  <th className="px-10 py-6 label-sm text-on-surface/40 text-center">W</th>
-                  <th className="px-10 py-6 label-sm text-on-surface/40 text-center">L</th>
+                  <th className="px-10 py-6 label-sm text-on-surface/40 text-center">W-L-T</th>
                   <th className="px-10 py-6 label-sm text-on-surface/40 text-center">Diff</th>
+                  <th className="px-10 py-6 label-sm text-on-surface/40 text-center">+M</th>
+                  <th className="px-10 py-6 label-sm text-on-surface/40 text-center">P</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-on-surface/5">
                 {leaderboard.map((p, idx) => (
-                  <tr key={p.name} className="hover:bg-surface-container-low transition-colors group">
+                  <tr key={p.name} className={`transition-colors group ${idx === 0 ? 'bg-[#FDE047] text-[#1A1A1A]' : 'hover:bg-surface-container-low'}`}>
                     <td className="px-10 py-6">
-                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${idx === 0 ? 'bg-primary-container text-on-primary-container' : idx === 1 ? 'bg-surface-container-high text-on-surface/60' : idx === 2 ? 'bg-surface-container-low text-on-surface/40' : 'bg-surface-container-lowest text-on-surface/20 border border-on-surface/5'}`}>
+                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${idx === 0 ? 'bg-[#1A1A1A] text-[#FDE047]' : idx === 1 ? 'bg-surface-container-high text-on-surface/60' : idx === 2 ? 'bg-surface-container-low text-on-surface/40' : 'bg-surface-container-lowest text-on-surface/20 border border-on-surface/5'}`}>
                         {idx + 1}
                       </span>
                     </td>
-                    <td className="px-10 py-6 font-bold text-on-surface text-lg">{p.name}</td>
-                    <td className="px-10 py-6 text-center font-bold text-on-surface/60">{p.wins}</td>
-                    <td className="px-10 py-6 text-center font-bold text-on-surface/60">{p.losses}</td>
-                    <td className="px-10 py-6 text-center font-bold text-on-surface/40">{p.pointsFor - p.pointsAgainst}</td>
+                    <td className="px-10 py-6">
+                      <div className={`font-bold text-lg ${idx === 0 ? 'text-[#1A1A1A]' : 'text-on-surface'}`}>{p.name}</div>
+                      {tournament.mode.includes('Team') && tournament.players.find(pl => pl.name === p.name)?.teamName && (
+                        <div className={`text-xs font-medium mt-0.5 ${idx === 0 ? 'text-[#1A1A1A]/60' : 'text-on-surface/40'}`}>
+                          {tournament.players.find(pl => pl.name === p.name)?.teamName}
+                        </div>
+                      )}
+                    </td>
+                    <td className={`px-10 py-6 text-center font-bold ${idx === 0 ? 'text-[#1A1A1A]/60' : 'text-on-surface/60'}`}>{p.wins}-{p.losses}-{p.ties}</td>
+                    <td className={`px-10 py-6 text-center font-bold ${idx === 0 ? 'text-[#1A1A1A]/60' : 'text-on-surface/60'}`}>{p.pointsFor - p.pointsAgainst > 0 ? `+${p.pointsFor - p.pointsAgainst}` : p.pointsFor - p.pointsAgainst}</td>
+                    <td className={`px-10 py-6 text-center font-bold ${idx === 0 ? 'text-[#1A1A1A]/60' : 'text-on-surface/60'}`}>{p.missedPoints > 0 ? `+${p.missedPoints}` : ''}</td>
+                    <td className={`px-10 py-6 text-center font-bold ${idx === 0 ? 'text-[#1A1A1A]' : 'text-on-surface'}`}>{p.pointsFor + p.missedPoints}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          
+          {/* Legend */}
+          <div className="p-10 bg-surface-container-low border-t border-on-surface/5 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-on-surface/60 uppercase tracking-wider">Definitions</p>
+                <p className="text-xs font-medium text-on-surface/40">W-L-T = Wins - Losses - Ties</p>
+                <p className="text-xs font-medium text-on-surface/40">Diff = Point difference (Points For - Points Against)</p>
+                <p className="text-xs font-medium text-on-surface/40">P = Total Points (Points For + Missed Points)</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-on-surface/60 uppercase tracking-wider">Missed Match Points (+M)</p>
+                <p className="text-xs font-medium text-on-surface/40">+M = n × (Pmatch / 2)</p>
+                <p className="text-xs font-medium text-on-surface/40 text-[10px] leading-relaxed">
+                  n: Number of missed matches<br/>
+                  Pmatch: Average total points per match in this tournament
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1402,7 +2571,7 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
               className="relative bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="p-10 text-center">
-                <div className="w-20 h-20 bg-error/10 text-error rounded-xl flex items-center justify-center mx-auto mb-8">
+                <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-xl flex items-center justify-center mx-auto mb-8">
                   <Trash2 className="w-10 h-10" />
                 </div>
                 <h3 className="text-3xl font-serif font-bold text-on-surface mb-4">Delete Tournament?</h3>
@@ -1411,7 +2580,7 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
                 <div className="flex flex-col gap-4">
                   <button 
                     onClick={onDelete}
-                    className="w-full py-5 bg-error text-white rounded-xl font-bold shadow-lg shadow-error/10 hover:bg-error/90 transition-all"
+                    className="w-full py-5 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-500/10 hover:bg-red-600 transition-all"
                   >
                     Yes, Delete
                   </button>
@@ -1431,7 +2600,202 @@ function TournamentDetail({ tournament, matches, onBack, onSelectMatch, onDelete
   );
 }
 
-function MatchScorer({ match, onBack, onUpdate, pointsToPlay, user }: { match: Match, onBack: () => void, onUpdate: (u: Partial<Match>) => void, pointsToPlay: number, user: User | null }) {
+function PadelCourt({ 
+  team1, 
+  team2, 
+  serverIndex, 
+  team1Name, 
+  team2Name,
+  score1,
+  score2,
+  onScoreUpdate,
+  onScoreSet,
+  onServerChange,
+  pointsToPlay
+}: { 
+  team1: string[], 
+  team2: string[], 
+  serverIndex: number, 
+  team1Name: string | null, 
+  team2Name: string | null,
+  score1: number,
+  score2: number,
+  onScoreUpdate: (team: 1 | 2, delta: number) => void,
+  onScoreSet: (team: 1 | 2, value: number) => void,
+  onServerChange: (idx: number) => void,
+  pointsToPlay: number
+}) {
+  const handleInputChange = (team: 1 | 2, val: string) => {
+    const sanitized = val.replace(/\D/g, '').slice(0, 2);
+    const num = sanitized === '' ? 0 : parseInt(sanitized);
+    onScoreSet(team, num);
+  };
+
+  const isTargetReached = (score1 + score2) >= pointsToPlay;
+
+  return (
+    <div className="w-full mt-8">
+      <div className="relative aspect-[2/1] bg-[#8A9A5B] rounded-[2.5rem] border-[6px] border-white overflow-hidden shadow-2xl">
+        {/* Court Lines */}
+        <div className="absolute inset-0 flex">
+          {/* Left Side (Team 1) */}
+          <div className="flex-1 border-r-[3px] border-white relative">
+            {/* Service Line (Vertical) - 30% from left edge */}
+            <div className="absolute top-0 left-[30%] w-[3px] h-full bg-white" />
+            {/* Horizontal Line - only from service line to net */}
+            <div className="absolute top-1/2 left-[30%] w-[70%] h-[3px] bg-white -translate-y-1/2" />
+          </div>
+          {/* Right Side (Team 2) */}
+          <div className="flex-1 relative">
+            {/* Service Line (Vertical) - 30% from right edge */}
+            <div className="absolute top-0 right-[30%] w-[3px] h-full bg-white" />
+            {/* Horizontal Line - only from service line to net */}
+            <div className="absolute top-1/2 right-[30%] w-[70%] h-[3px] bg-white -translate-y-1/2" />
+          </div>
+        </div>
+
+        {/* Net */}
+        <div className="absolute top-0 left-1/2 w-1.5 h-full bg-white/40 backdrop-blur-sm -translate-x-1/2 flex flex-col justify-between py-4">
+          <div className="w-6 h-1.5 bg-white -translate-x-2 rounded-full shadow-sm" />
+          <div className="w-6 h-1.5 bg-white -translate-x-2 rounded-full shadow-sm" />
+        </div>
+
+        {/* Team Names - Vertical on edges */}
+        <div className="absolute inset-y-0 left-4 flex items-center">
+          <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] [writing-mode:vertical-lr] rotate-180">
+            {team1Name || 'Team 1'}
+          </span>
+        </div>
+        <div className="absolute inset-y-0 right-4 flex items-center">
+          <span className="text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] [writing-mode:vertical-lr]">
+            {team2Name || 'Team 2'}
+          </span>
+        </div>
+
+        {/* Score Controls */}
+        <div className="absolute inset-x-[15%] inset-y-0 flex pointer-events-none">
+          {/* Team 1 Controls (Left) */}
+          <div className="flex-1 relative">
+            {/* Score Input - Centered vertically with the + button */}
+            <div className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <div className="relative flex items-center justify-center">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={score1}
+                  onChange={(e) => handleInputChange(1, e.target.value)}
+                  className="w-64 bg-transparent text-9xl font-black text-white text-center outline-none drop-shadow-lg tabular-nums focus:scale-110 transition-transform"
+                />
+              </div>
+            </div>
+            {/* Plus Button - On the center line, 50% bigger */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <button 
+                onClick={() => onScoreUpdate(1, 1)}
+                className="w-32 h-32 rounded-[2.5rem] bg-[#FDE047] text-[#1A1A1A] flex items-center justify-center hover:scale-110 transition-all active:scale-90 shadow-2xl shadow-[#FDE047]/30"
+              >
+                <Plus className="w-16 h-16" />
+              </button>
+            </div>
+            {/* Minus Button - Below Plus, aligned with bottom player */}
+            <div className="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <button 
+                onClick={() => onScoreUpdate(1, -1)}
+                className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all active:scale-90"
+              >
+                <Minus className="w-6 h-6 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Team 2 Controls (Right) */}
+          <div className="flex-1 relative">
+            {/* Score Input - Centered vertically with the + button */}
+            <div className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <div className="relative flex items-center justify-center">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={score2}
+                  onChange={(e) => handleInputChange(2, e.target.value)}
+                  className="w-64 bg-transparent text-9xl font-black text-white text-center outline-none drop-shadow-lg tabular-nums focus:scale-110 transition-transform"
+                />
+              </div>
+            </div>
+            {/* Plus Button - On the center line, 50% bigger */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <button 
+                onClick={() => onScoreUpdate(2, 1)}
+                className="w-32 h-32 rounded-[2.5rem] bg-[#FDE047] text-[#1A1A1A] flex items-center justify-center hover:scale-110 transition-all active:scale-90 shadow-2xl shadow-[#FDE047]/30"
+              >
+                <Plus className="w-16 h-16" />
+              </button>
+            </div>
+            {/* Minus Button - Below Plus, aligned with bottom player */}
+            <div className="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+              <button 
+                onClick={() => onScoreUpdate(2, -1)}
+                className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all active:scale-90"
+              >
+                <Minus className="w-6 h-6 text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Players */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Team 1 (Left) */}
+          <div className="absolute top-1/4 left-[7.5%] -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <PlayerMarker name={team1[0]} isServer={serverIndex === 0} onClick={() => onServerChange(0)} />
+          </div>
+          <div className="absolute top-3/4 left-[7.5%] -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <PlayerMarker name={team1[1]} isServer={serverIndex === 1} onClick={() => onServerChange(1)} />
+          </div>
+
+          {/* Team 2 (Right) */}
+          <div className="absolute top-1/4 right-[7.5%] translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <PlayerMarker name={team2[0]} isServer={serverIndex === 2} onClick={() => onServerChange(2)} />
+          </div>
+          <div className="absolute top-3/4 right-[7.5%] translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <PlayerMarker name={team2[1]} isServer={serverIndex === 3} onClick={() => onServerChange(3)} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlayerMarker({ name, isServer, onClick }: { name: string, isServer: boolean, onClick: () => void }) {
+  return (
+    <div 
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 cursor-pointer group"
+    >
+      <motion.div 
+        initial={false}
+        animate={isServer ? { scale: 1.15, y: -8 } : { scale: 1, y: 0 }}
+        className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-xl transition-all duration-500 ${isServer ? 'bg-[#FDE047] border-white' : 'bg-white/10 border-white/30 backdrop-blur-md group-hover:bg-white/20'}`}
+      >
+        <span className={`text-xs font-bold ${isServer ? 'text-[#1A1A1A]' : 'text-white'}`}>
+          {name.split(' ').map(n => n[0]).join('')}
+        </span>
+        {isServer && (
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+            className="absolute -top-1 -right-1 w-6 h-6 bg-[#FDE047] rounded-full flex items-center justify-center shadow-md border border-white"
+          >
+            <PadelBall className="w-4 h-4 text-[#1A1A1A]" />
+          </motion.div>
+        )}
+      </motion.div>
+      <span className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap group-hover:text-[#FDE047] transition-colors">{name}</span>
+    </div>
+  );
+}
+
+function MatchScorer({ match, tournament, onBack, onUpdate, pointsToPlay, user }: { match: Match, tournament: Tournament, onBack: () => void, onUpdate: (u: Partial<Match>) => void, pointsToPlay: number, user: User | null }) {
   const [score1, setScore1] = useState(match.score1);
   const [score2, setScore2] = useState(match.score2);
   const [sets1, setSets1] = useState(match.sets1);
@@ -1490,6 +2854,12 @@ function MatchScorer({ match, onBack, onUpdate, pointsToPlay, user }: { match: M
     pushToHistory();
     if (team === 1) setScore1(Math.max(0, score1 + delta));
     else setScore2(Math.max(0, score2 + delta));
+  };
+
+  const handleScoreSet = (team: 1 | 2, value: number) => {
+    pushToHistory();
+    if (team === 1) setScore1(Math.min(99, Math.max(0, value)));
+    else setScore2(Math.min(99, Math.max(0, value)));
   };
 
   const handleSet = () => {
@@ -1572,262 +2942,164 @@ function MatchScorer({ match, onBack, onUpdate, pointsToPlay, user }: { match: M
 
   const totalScore = score1 + score2;
 
+  const getTeamName = (playerNames: string[]) => {
+    if (!tournament.mode.includes('Team')) return null;
+    const p = tournament.players.find(p => p.name === playerNames[0]);
+    return p?.teamName || null;
+  };
+
+  const team1Name = getTeamName(match.team1);
+  const team2Name = getTeamName(match.team2);
+
+  const isTargetReached = (score1 + score2) >= pointsToPlay;
+
   return (
     <motion.div 
       key="match"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="max-w-5xl mx-auto px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen bg-[#FDFBF3] -mx-4 px-4 py-12"
     >
-      <div className="flex items-center justify-between mb-12">
-        <button 
-          onClick={onBack} 
-          className="p-4 rounded-xl bg-surface-container-lowest shadow-sm border border-on-surface/5 hover:border-primary/30 hover:bg-surface-container-low transition-all group"
-        >
-          <ArrowLeft className="w-6 h-6 text-on-surface/60 group-hover:text-on-surface" />
-        </button>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-3 mb-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${status === MatchStatus.IN_PROGRESS ? 'bg-primary animate-pulse shadow-[0_0_12px_rgba(var(--primary),0.5)]' : 'bg-on-surface/10'}`} />
-            <span className="label-sm text-on-surface/40">{status}</span>
-          </div>
-          <div className="bg-on-surface px-4 py-1.5 rounded-full">
-            <span className="text-[10px] font-bold text-surface uppercase tracking-widest">Target: {pointsToPlay}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-surface-container-low p-1 rounded-xl mr-2">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="relative flex items-center justify-between mb-12">
+          <div className="flex-1">
             <button 
-              onClick={undo} 
-              disabled={history.length === 0}
-              className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface/60"
-              title="Undo"
+              onClick={onBack} 
+              className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:bg-surface-container-low transition-all"
             >
-              <Undo2 className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={redo} 
-              disabled={redoStack.length === 0}
-              className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface/60"
-              title="Redo"
-            >
-              <Redo2 className="w-5 h-5" />
+              <ArrowLeft className="w-6 h-6 text-[#1A1A1A]" />
             </button>
           </div>
-          <button 
-            onClick={save} 
-            className="flex items-center gap-3 bg-surface-container-lowest text-on-surface border border-on-surface/5 px-6 py-3.5 rounded-xl font-bold shadow-sm hover:border-primary/30 hover:bg-surface-container-low transition-all"
-          >
-            <Save className="w-5 h-5" />
-            <span className="hidden sm:inline">Save</span>
-          </button>
-        </div>
-      </div>
+          
+          <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+            <motion.div 
+              layout
+              className={`px-8 py-3 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap transition-colors duration-500 ${isTargetReached ? 'bg-[#FDE047] text-[#1A1A1A]' : 'bg-white text-[#1A1A1A]'}`}
+            >
+              {isTargetReached ? (
+                <>
+                  <Trophy className="w-5 h-5 text-[#1A1A1A]" />
+                  <span className="text-[11px] font-bold text-[#1A1A1A] uppercase tracking-[0.2em]">Target Reached</span>
+                </>
+              ) : (
+                <span className="text-[11px] font-bold text-[#1A1A1A] uppercase tracking-[0.2em]">Target: {pointsToPlay}</span>
+              )}
+            </motion.div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="flex-1 flex justify-end items-center gap-4">
+            <div className="flex bg-[#F0EEE6] p-1 rounded-2xl">
+              <button 
+                onClick={undo} 
+                disabled={history.length === 0}
+                className="p-3 rounded-xl hover:bg-white disabled:opacity-20 transition-all text-[#1A1A1A]"
+              >
+                <Undo2 className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={redo} 
+                disabled={redoStack.length === 0}
+                className="p-3 rounded-xl hover:bg-white disabled:opacity-20 transition-all text-[#1A1A1A]"
+              >
+                <Redo2 className="w-5 h-5" />
+              </button>
+            </div>
+            <button 
+              onClick={save} 
+              className="flex items-center gap-3 bg-white text-[#1A1A1A] px-8 py-4 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all"
+            >
+              <Save className="w-5 h-5" />
+              <span>Save</span>
+            </button>
+          </div>
+        </div>
+
         {activeUsers > 1 && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-2 bg-primary-container/10 border border-primary-container/30 p-6 rounded-2xl flex items-start gap-5"
+            className="mb-8 bg-[#FDE047]/10 border border-[#FDE047]/20 p-6 rounded-3xl flex items-center gap-5"
           >
-            <div className="p-3 rounded-xl bg-primary-container text-on-primary-container">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-on-surface mb-1">Multiple Scorers Active</p>
-              <p className="text-sm text-on-surface/60 leading-relaxed">There are {activeUsers} users currently viewing or editing this match. Please coordinate to avoid data conflicts.</p>
-            </div>
+            <AlertTriangle className="w-6 h-6 text-[#FDE047]" />
+            <p className="text-sm font-bold text-[#1A1A1A]">
+              {activeUsers} people are currently scoring this match.
+            </p>
           </motion.div>
         )}
 
-        {/* Team 1 */}
-        <div className="bg-surface-container-lowest p-12 rounded-2xl shadow-sm border border-on-surface/5 flex flex-col items-center relative group overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-primary-container opacity-20 group-hover:opacity-100 transition-opacity" />
-          <div className="flex items-center gap-3 mb-8">
-            <Users className="w-5 h-5 text-on-surface/20" />
-            <span className="label-sm text-on-surface/20">Team One</span>
-          </div>
-          <div className="space-y-2 mb-12 text-center h-24 flex flex-col justify-center">
-            {match.team1.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 justify-center">
-                <p className="text-2xl font-serif font-bold text-on-surface">{p}</p>
-                {serverIndex === i && (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                  >
-                    <PadelBall className="w-5 h-5 text-primary" />
-                  </motion.div>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-8 mb-12">
-            <button 
-              onClick={() => handleScore(1, -1)} 
-              className="w-16 h-16 rounded-xl bg-surface-container-low border border-on-surface/5 flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-90"
-            >
-              <Minus className="w-8 h-8 text-on-surface/60" />
-            </button>
-            <div className="relative">
-              <input 
-                type="number"
-                value={score1}
-                onChange={(e) => {
-                  pushToHistory();
-                  setScore1(parseInt(e.target.value) || 0);
-                }}
-                className="text-9xl font-black text-on-surface w-40 text-center bg-transparent border-none focus:outline-none cursor-text caret-primary tabular-nums"
-              />
-            </div>
-            <button 
-              onClick={() => handleScore(1, 1)} 
-              className="w-16 h-16 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center hover:scale-105 transition-all active:scale-90 shadow-lg shadow-primary/10"
-            >
-              <Plus className="w-8 h-8" />
-            </button>
-          </div>
-          <div className="flex gap-3">
-            {match.team1.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => handleServerChange(i)}
-                className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${serverIndex === i ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface/40 hover:bg-surface-container-high'}`}
-              >
-                Server {i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Padel Court View - Moved up to replace score cards */}
+        <PadelCourt 
+          team1={match.team1} 
+          team2={match.team2} 
+          serverIndex={serverIndex}
+          team1Name={team1Name}
+          team2Name={team2Name}
+          score1={score1}
+          score2={score2}
+          onScoreUpdate={handleScore}
+          onScoreSet={handleScoreSet}
+          onServerChange={handleServerChange}
+          pointsToPlay={pointsToPlay}
+        />
 
-        {/* Team 2 */}
-        <div className="bg-surface-container-lowest p-12 rounded-2xl shadow-sm border border-on-surface/5 flex flex-col items-center relative group overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-primary-container opacity-20 group-hover:opacity-100 transition-opacity" />
-          <div className="flex items-center gap-3 mb-8">
-            <Users className="w-5 h-5 text-on-surface/20" />
-            <span className="label-sm text-on-surface/20">Team Two</span>
-          </div>
-          <div className="space-y-2 mb-12 text-center h-24 flex flex-col justify-center">
-            {match.team2.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 justify-center">
-                <p className="text-2xl font-serif font-bold text-on-surface">{p}</p>
-                {serverIndex === (i + 2) && (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                  >
-                    <PadelBall className="w-5 h-5 text-primary" />
-                  </motion.div>
-                )}
+        {/* Bottom Panel */}
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-[#F0EEE6] mt-12">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
+            <div className="flex-1 w-full">
+              <div className="flex items-center gap-4 mb-8">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E8E]">Set Scores</span>
+                <div className="h-px flex-1 bg-[#F0EEE6]" />
               </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-8 mb-12">
-            <button 
-              onClick={() => handleScore(2, -1)} 
-              className="w-16 h-16 rounded-xl bg-surface-container-low border border-on-surface/5 flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-90"
-            >
-              <Minus className="w-8 h-8 text-on-surface/60" />
-            </button>
-            <div className="relative">
-              <input 
-                type="number"
-                value={score2}
-                onChange={(e) => {
-                  pushToHistory();
-                  setScore2(parseInt(e.target.value) || 0);
-                }}
-                className="text-9xl font-black text-on-surface w-40 text-center bg-transparent border-none focus:outline-none cursor-text caret-primary tabular-nums"
-              />
-            </div>
-            <button 
-              onClick={() => handleScore(2, 1)} 
-              className="w-16 h-16 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center hover:scale-105 transition-all active:scale-90 shadow-lg shadow-primary/10"
-            >
-              <Plus className="w-8 h-8" />
-            </button>
-          </div>
-          <div className="flex gap-3">
-            {match.team2.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => handleServerChange(i + 2)}
-                className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${serverIndex === (i + 2) ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface/40 hover:bg-surface-container-high'}`}
-              >
-                Server {i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-12 space-y-8">
-        <div className="bg-surface-container-lowest p-8 rounded-2xl shadow-sm border border-on-surface/5 flex flex-col lg:flex-row items-center justify-between gap-8">
-          <div className="flex flex-col gap-6 w-full lg:w-1/2">
-            <div className="flex items-center gap-4">
-              <span className="label-sm text-on-surface/40">Set Scores</span>
-              <div className="h-px flex-1 bg-on-surface/5" />
-            </div>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface/40">Team 1</p>
-                <div className="flex gap-3">
-                  {sets1.map((s, i) => (
-                    <input
-                      key={i}
-                      type="number"
-                      value={s}
-                      onChange={(e) => handleSetScoreChange(1, i, e.target.value)}
-                      className="w-14 h-14 bg-surface-container-low border border-on-surface/5 rounded-xl flex items-center justify-center font-bold text-xl text-center outline-none focus:bg-surface-container-lowest focus:border-primary/30 transition-all tabular-nums"
-                    />
-                  ))}
+              <div className="grid grid-cols-2 gap-12">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E8E]">Team 1</p>
+                  <div className="flex gap-3">
+                    {sets1.map((s, i) => (
+                      <input
+                        key={i}
+                        type="number"
+                        value={s}
+                        onChange={(e) => handleSetScoreChange(1, i, e.target.value)}
+                        className="w-16 h-16 bg-[#FDFBF3] border border-[#F0EEE6] rounded-2xl flex items-center justify-center font-bold text-2xl text-center outline-none focus:bg-white focus:border-[#FDE047] transition-all tabular-nums"
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface/40">Team 2</p>
-                <div className="flex gap-3">
-                  {sets2.map((s, i) => (
-                    <input
-                      key={i}
-                      type="number"
-                      value={s}
-                      onChange={(e) => handleSetScoreChange(2, i, e.target.value)}
-                      className="w-14 h-14 bg-surface-container-low border border-on-surface/5 rounded-xl flex items-center justify-center font-bold text-xl text-center outline-none focus:bg-surface-container-lowest focus:border-primary/30 transition-all tabular-nums"
-                    />
-                  ))}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E8E]">Team 2</p>
+                  <div className="flex gap-3">
+                    {sets2.map((s, i) => (
+                      <input
+                        key={i}
+                        type="number"
+                        value={s}
+                        onChange={(e) => handleSetScoreChange(2, i, e.target.value)}
+                        className="w-16 h-16 bg-[#FDFBF3] border border-[#F0EEE6] rounded-2xl flex items-center justify-center font-bold text-2xl text-center outline-none focus:bg-white focus:border-[#FDE047] transition-all tabular-nums"
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-4 w-full lg:w-auto">
-            <button 
-              onClick={handleSet}
-              className={`flex-1 lg:flex-none px-10 py-5 rounded-xl font-bold text-sm transition-all ${ (score1 >= pointsToPlay || score2 >= pointsToPlay) ? 'bg-surface-container-low text-on-surface border border-primary/30 shadow-sm' : 'bg-surface-container-low text-on-surface/20 border border-on-surface/5' }`}
-            >
-              Finish Set
-            </button>
-            <button 
-              onClick={complete}
-              className="flex-1 lg:flex-none bg-primary-container text-on-primary px-10 py-5 rounded-xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
-            >
-              Finish Match
-            </button>
+            <div className="flex items-center gap-4 w-full lg:w-auto">
+              <button 
+                onClick={handleSet}
+                className="flex-1 lg:flex-none px-12 py-6 rounded-2xl font-bold text-sm bg-[#FDFBF3] text-[#1A1A1A] border border-[#F0EEE6] hover:bg-[#F0EEE6] transition-all"
+              >
+                Finish Set
+              </button>
+              <button 
+                onClick={complete}
+                className="flex-1 lg:flex-none bg-[#FDE047] text-[#1A1A1A] px-12 py-6 rounded-2xl font-bold shadow-xl shadow-[#FDE047]/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                Finish Match
+              </button>
+            </div>
           </div>
         </div>
-
-        {(score1 >= pointsToPlay || score2 >= pointsToPlay) && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-primary-container/10 border border-primary-container/30 px-8 py-5 rounded-2xl font-bold text-sm text-on-surface flex items-center justify-center gap-4"
-          >
-            <Trophy className="w-6 h-6 text-primary" />
-            <span className="tracking-wide">Target Reached! Suggested to finish set.</span>
-          </motion.div>
-        )}
       </div>
     </motion.div>
   );
