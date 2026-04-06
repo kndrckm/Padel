@@ -16,20 +16,24 @@ service cloud.firestore {
 
     function isValidTournament(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Mixicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano'] &&
+             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano', 'Mixed Mexicano'] &&
              data.status in ['active', 'completed'] &&
              data.players is list && data.players.size() >= 2 && data.players.size() <= 64 &&
              data.courtsCount is int && data.courtsCount > 0 &&
              data.pointsToPlay is int && data.pointsToPlay > 0 &&
              data.creatorId is string &&
-             data.createdAt is string &&
-             (!('currentRound' in data) || data.currentRound is int);
+             (data.createdAt is string || data.createdAt is timestamp) &&
+             (!('currentRound' in data) || data.currentRound is int) &&
+             (!('numberOfMatches' in data) || data.numberOfMatches is int) &&
+             (!('swissPools' in data) || data.swissPools is int) &&
+             (!('playoffTeams' in data) || data.playoffTeams is int) &&
+             (!('playoffType' in data) || data.playoffType in ['single', 'double']);
     }
 
     function isValidMatch(data) {
       return data.tournamentId is string &&
-             data.team1 is list && data.team1.size() == 2 &&
-             data.team2 is list && data.team2.size() == 2 &&
+             data.team1 is list && 
+             data.team2 is list && 
              data.score1 is int && data.score1 >= 0 &&
              data.score2 is int && data.score2 >= 0 &&
              data.sets1 is list && data.sets2 is list &&
@@ -37,13 +41,14 @@ service cloud.firestore {
              data.status in ['pending', 'in-progress', 'completed'] &&
              (!('round' in data) || data.round is int) &&
              (!('court' in data) || data.court is int) &&
-             (!('winner' in data) || data.winner in [1, 2]);
+             (!('winner' in data) || data.winner in [1, 2]) &&
+             (!('isSkeleton' in data) || data.isSkeleton is bool);
     }
 
     match /tournaments/{tournamentId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidTournament(request.resource.data) && request.resource.data.creatorId == request.auth.uid;
-      allow update: if isAuthenticated() && isValidTournament(request.resource.data) && (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
       allow delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
       
       match /matches/{matchId} {

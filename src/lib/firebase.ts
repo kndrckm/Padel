@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import { initializeFirestore } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 const config = {
   ...firebaseConfig,
@@ -9,5 +9,7 @@ const config = {
 };
 
 const app = initializeApp(config);
-export const db = getFirestore(app, config.firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  ignoreUndefinedProperties: true
+}, config.firestoreDatabaseId);
 export const auth = getAuth(app);

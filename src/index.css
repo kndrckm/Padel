@@ -48,3 +48,7 @@
     @apply text-[10px] uppercase tracking-[0.1rem] font-bold opacity-60;
   }
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; } 
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.clip-x { overflow-x: clip; }

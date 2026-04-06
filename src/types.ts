@@ -32,11 +32,11 @@ export interface Tournament {
   status: 'active' | 'completed';
   createdAt: string;
   players: Player[];
-  currentRound?: number;
+  currentStage?: number;
   courtsCount: number;
   pointsToPlay: number;
   numberOfMatches?: number;
-  matchesPerRound?: number;
+  matchesPerStage?: number;
   swissPools?: number;
   playoffTeams?: number;
   playoffType?: 'single' | 'double';
@@ -54,11 +54,14 @@ export interface Match {
   serverIndex: number; // 0-3
   status: MatchStatus;
   winner?: 1 | 2;
-  round?: number;
+  stage?: number;
   court?: number;
   matchIndex?: number;
+  logicId?: string;
   nextMatchId?: string;
+  losersMatchId?: string;
   isLosersBracket?: boolean;
+  isSkeleton?: boolean;
 }
 
 export interface PlayerStats {
