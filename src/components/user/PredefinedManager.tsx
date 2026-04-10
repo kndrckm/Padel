@@ -12,17 +12,9 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { ManIcon, WomanIcon } from '../common/Icons';
-import { 
-  getPredefinedPlayers, 
-  addPredefinedPlayer, 
-  deletePredefinedPlayer,
-  updatePredefinedPlayer,
-  getPredefinedTeams,
-  addPredefinedTeam,
-  deletePredefinedTeam,
-  updatePredefinedTeam
-} from '../../lib/userService';
+import { getPredefinedPlayers, addPredefinedPlayer, deletePredefinedPlayer, updatePredefinedPlayer, getPredefinedTeams, addPredefinedTeam, deletePredefinedTeam, updatePredefinedTeam } from '../../lib/userService';
 import { PredefinedPlayer, PredefinedTeam } from '../../types';
+import { KATAPGAMA_TEAMS } from '../../constants';
 import { User } from 'firebase/auth';
 
 interface PredefinedManagerProps {
@@ -58,6 +50,24 @@ export default function PredefinedManager({ user, onBack }: PredefinedManagerPro
       setTeams(t);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch personnel data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportKatapgama = async () => {
+    setLoading(true);
+    try {
+      for (const t of KATAPGAMA_TEAMS) {
+        await addPredefinedTeam(user.uid, { 
+          name: t.teamName, 
+          player1: t.name, 
+          player2: t.partner 
+        });
+      }
+      fetchData();
+    } catch (err: any) {
+      setError(err.message || 'Failed to import pack');
     } finally {
       setLoading(false);
     }
@@ -153,7 +163,7 @@ export default function PredefinedManager({ user, onBack }: PredefinedManagerPro
               <ArrowLeft className="w-6 h-6 text-on-surface/40 group-hover:text-on-surface group-hover:-translate-x-1 transition-all" />
             </button>
             <div>
-              <h1 className="text-5xl font-black text-on-surface tracking-tighter uppercase italic leading-none mb-3">Manage Personnel</h1>
+              <h1 className="text-5xl font-black text-on-surface tracking-tighter uppercase italic leading-none mb-3">Manage Team</h1>
               <p className="text-on-surface/40 font-medium tracking-wide uppercase text-[10px]">Registry • Players & Teams</p>
             </div>
           </div>
@@ -299,7 +309,20 @@ export default function PredefinedManager({ user, onBack }: PredefinedManagerPro
                 <div className="w-24 h-24 bg-surface-container-low rounded-[2rem] flex items-center justify-center mx-auto mb-8">
                   {activeTab === 'players' ? <UserCheck className="w-10 h-10 text-on-surface/10" /> : <Users className="w-10 h-10 text-on-surface/10" />}
                 </div>
-                <h3 className="text-2xl font-black text-on-surface/20 uppercase tracking-widest italic">Registry is Empty</h3>
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-2xl font-black text-on-surface">
+                    {activeTab === 'players' ? 'Personnel' : 'Teams'}
+                  </h2>
+                  {activeTab === 'teams' && teams.length === 0 && (
+                    <button
+                      onClick={handleImportKatapgama}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary/20 transition-all text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Import Katapgama Pack
+                    </button>
+                  )}
+                </div>
                 <p className="text-on-surface/10 font-bold uppercase text-[10px] mt-2 tracking-widest">Start by adding your first {activeTab === 'players' ? 'player' : 'team'} above</p>
               </div>
             ) : (activeTab === 'players' ? players : teams).map((item) => (

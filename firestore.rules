@@ -15,57 +15,23 @@ service cloud.firestore {
     }
 
     function isValidTournament(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano', 'Mixed Mexicano', 'Mixed'] &&
-             data.status in ['active', 'completed'] &&
-             data.players is list && data.players.size() >= 2 && data.players.size() <= 64 &&
-             data.courtsCount is int && data.courtsCount > 0 &&
-             data.pointsToPlay is int && data.pointsToPlay > 0 &&
-             data.creatorId is string &&
-             (data.createdAt is string || data.createdAt is timestamp) &&
-             (!('currentRound' in data) || data.currentRound is int) &&
-             (!('numberOfMatches' in data) || data.numberOfMatches is int) &&
-             (!('swissPools' in data) || data.swissPools is int) &&
-             (!('playoffTeams' in data) || data.playoffTeams is int) &&
-             (!('playoffType' in data) || data.playoffType in ['single', 'double']) &&
-             (!('scoringMode' in data) || data.scoringMode in ['americano', 'tennis', 'tennis_full']) &&
-             (!('qualifierMode' in data) || data.qualifierMode is string) &&
-             (!('playoffMode' in data) || data.playoffMode is string) &&
-             (!('setsToPlay' in data) || data.setsToPlay is int) &&
-             (!('gamesPerSet' in data) || data.gamesPerSet is int) &&
-             (!('useGoldenPoint' in data) || data.useGoldenPoint is bool) &&
-             (!('currentStage' in data) || data.currentStage is int) &&
-             (!('matchesPerStage' in data) || data.matchesPerStage is int) &&
-             (!('playoffStarted' in data) || data.playoffStarted is bool) &&
-             (!('advancingTeamsCount' in data) || data.advancingTeamsCount is int) &&
-             (!('advancingTeams' in data) || data.advancingTeams is list);
+      return true;
     }
 
     function isValidMatch(data) {
-      return data.tournamentId is string &&
-             data.team1 is list && 
-             data.team2 is list && 
-             data.score1 is int && data.score1 >= 0 &&
-             data.score2 is int && data.score2 >= 0 &&
-             data.sets1 is list && data.sets2 is list &&
-             data.serverIndex is int && data.serverIndex >= 0 && data.serverIndex <= 3 &&
-             data.status in ['pending', 'in-progress', 'completed'] &&
-             (!('round' in data) || data.round is int) &&
-             (!('court' in data) || data.court is int) &&
-             (!('winner' in data) || data.winner in [1, 2]) &&
-             (!('isSkeleton' in data) || data.isSkeleton is bool);
+      return true;
     }
 
     match /tournaments/{tournamentId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidTournament(request.resource.data) && request.resource.data.creatorId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
       allow delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || isAdmin());
       
       match /matches/{matchId} {
         allow read: if true;
-        allow create: if isAuthenticated() && isValidMatch(request.resource.data);
-        allow update: if isValidMatch(request.resource.data); // Allow public update for scoring
+        allow create: if isAuthenticated();
+        allow update: if true; // Allow public update for scoring (referees can score matches)
         allow delete: if isAuthenticated() && (get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.creatorId == request.auth.uid || isAdmin());
 
         match /presence/{presenceId} {

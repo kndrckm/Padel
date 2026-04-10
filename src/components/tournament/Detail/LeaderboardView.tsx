@@ -32,9 +32,9 @@ export const LeaderboardView = ({ tournament, leaderboard }: LeaderboardViewProp
                   </td>
                   <td className="px-10 py-6">
                     <div className={`font-bold text-lg ${idx === 0 ? 'text-on-primary-container' : 'text-on-surface'}`}>{p.name}</div>
-                    {tournament.mode.includes('Team') && tournament.players.find(pl => pl.name === p.name)?.teamName && (
+                    {(tournament.isKatapgama || tournament.mode.includes('Team')) && (
                       <div className={`text-xs font-medium mt-0.5 ${idx === 0 ? 'text-on-primary-container/60' : 'text-on-surface/40'}`}>
-                        {tournament.players.find(pl => pl.name === p.name)?.teamName}
+                        {tournament.players.filter(pl => pl.teamName === p.name || pl.name === p.name).map(pl => pl.name).join(' & ')}
                       </div>
                     )}
                   </td>

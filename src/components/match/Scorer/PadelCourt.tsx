@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus } from 'lucide-react';
 import { PadelBall, ManIcon, WomanIcon } from '../../common/Icons';
 import { ScoringMode } from '../../../types';
@@ -39,6 +39,58 @@ const PlayerMarker = ({ name, isServer, onClick }: PlayerMarkerProps) => {
   );
 };
 
+interface ScoreSelectorProps {
+  value: string | number;
+  options: (string | number)[];
+  onSelect: (val: string | number) => void;
+  onClose: () => void;
+  title: string;
+}
+
+const ScoreSelector = ({ value, options, onSelect, onClose, title }: ScoreSelectorProps) => {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        onClick={onClose}
+        className="absolute inset-0 bg-on-surface/40 backdrop-blur-md" 
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative bg-surface-container-lowest w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-8 border border-on-surface/5"
+      >
+        <div className="mb-8 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface/30 mb-2">{title}</p>
+          <h3 className="text-2xl font-black text-on-surface italic uppercase">Select Score</h3>
+        </div>
+        
+        <div className="grid grid-cols-4 md:grid-cols-9 gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => { onSelect(opt); onClose(); }}
+              className={`h-16 rounded-2xl font-black text-xl transition-all ${value === opt ? 'bg-[#FDE047] text-[#1A1A1A] shadow-lg scale-110' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        
+        <button 
+          onClick={onClose}
+          className="w-full mt-8 py-4 px-6 bg-on-surface/5 text-on-surface/40 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-on-surface/10 transition-all"
+        >
+          Cancel
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
 interface PadelCourtProps {
   team1: string[];
   team2: string[];
@@ -74,11 +126,18 @@ export const PadelCourt = ({
   onServerChange,
   pointsToPlay
 }: PadelCourtProps) => {
-  const handleInputChange = (team: 1 | 2, val: string) => {
-    const sanitized = val.replace(/\D/g, '').slice(0, 2);
-    const num = sanitized === '' ? 0 : parseInt(sanitized);
-    onScoreSet(team, num);
+  const [showSelector, setShowSelector] = React.useState<1 | 2 | null>(null);
+
+  const tennisOptions = isTiebreak ? Array.from({ length: 31 }, (_, i) => i) : ['0', '15', '30', '40', 'Ad'];
+  const americanoOptions = Array.from({ length: pointsToPlay + 1 }, (_, i) => i);
+  const currentOptions = scoringMode === ScoringMode.TENNIS ? tennisOptions : americanoOptions;
+
+  const handleScorePick = (team: 1 | 2, val: string | number) => {
+    onScoreSet(team, val as any);
   };
+
+  const isAmericano = scoringMode === ScoringMode.AMERICANO;
+  const isMaxed = isAmericano && (score1 + score2 >= pointsToPlay);
 
   return (
     <div className="w-full mt-8">
@@ -134,18 +193,18 @@ export const PadelCourt = ({
                   <span className="text-xs font-bold text-white uppercase tracking-widest">Games: {score1}</span>
                 </div>
               )}
-              <input
-                type="text"
-                inputMode={scoringMode === ScoringMode.TENNIS ? 'text' : 'numeric'}
-                value={scoringMode === ScoringMode.TENNIS ? points1 : score1}
-                onChange={(e) => handleInputChange(1, e.target.value)}
-                className={`${scoringMode === ScoringMode.TENNIS ? 'text-8xl' : 'text-9xl'} w-64 bg-transparent font-black text-white text-center outline-none drop-shadow-lg tabular-nums focus:scale-110 transition-transform`}
-              />
+              <button
+                onClick={() => setShowSelector(1)}
+                className={`${scoringMode === ScoringMode.TENNIS ? 'text-8xl' : 'text-9xl'} w-64 bg-transparent font-black text-white text-center outline-none drop-shadow-lg tabular-nums hover:scale-110 transition-transform active:scale-95`}
+              >
+                {scoringMode === ScoringMode.TENNIS ? points1 : score1}
+              </button>
             </div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
               <button 
-                onClick={() => onScoreUpdate(1, 1)}
-                className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[#FDE047] text-[#1A1A1A] flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl shadow-[#FDE047]/30"
+                onClick={() => !isMaxed && onScoreUpdate(1, 1)}
+                disabled={isMaxed}
+                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
               >
                 <Plus className="w-6 h-6" strokeWidth={4} />
               </button>
@@ -167,18 +226,18 @@ export const PadelCourt = ({
                   <span className="text-xs font-bold text-white uppercase tracking-widest">Games: {score2}</span>
                 </div>
               )}
-              <input
-                type="text"
-                inputMode={scoringMode === ScoringMode.TENNIS ? 'text' : 'numeric'}
-                value={scoringMode === ScoringMode.TENNIS ? points2 : score2}
-                onChange={(e) => handleInputChange(2, e.target.value)}
-                className={`${scoringMode === ScoringMode.TENNIS ? 'text-8xl' : 'text-9xl'} w-64 bg-transparent font-black text-white text-center outline-none drop-shadow-lg tabular-nums focus:scale-110 transition-transform`}
-              />
+              <button
+                onClick={() => setShowSelector(2)}
+                className={`${scoringMode === ScoringMode.TENNIS ? 'text-8xl' : 'text-9xl'} w-64 bg-transparent font-black text-white text-center outline-none drop-shadow-lg tabular-nums hover:scale-110 transition-transform active:scale-95`}
+              >
+                {scoringMode === ScoringMode.TENNIS ? points2 : score2}
+              </button>
             </div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
               <button 
-                onClick={() => onScoreUpdate(2, 1)}
-                className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[#FDE047] text-[#1A1A1A] flex items-center justify-center hover:scale-110 transition-all active:scale-95 shadow-xl shadow-[#FDE047]/30"
+                onClick={() => !isMaxed && onScoreUpdate(2, 1)}
+                disabled={isMaxed}
+                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
               >
                 <Plus className="w-6 h-6" strokeWidth={4} />
               </button>
@@ -210,6 +269,18 @@ export const PadelCourt = ({
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showSelector !== null && (
+          <ScoreSelector 
+            value={showSelector === 1 ? (scoringMode === ScoringMode.TENNIS ? points1! : score1) : (scoringMode === ScoringMode.TENNIS ? points2! : score2)}
+            options={currentOptions}
+            onSelect={(val) => handleScorePick(showSelector, val)}
+            onClose={() => setShowSelector(null)}
+            title={showSelector === 1 ? (team1Name || 'Team 1') : (team2Name || 'Team 2')}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

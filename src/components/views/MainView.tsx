@@ -14,7 +14,7 @@ import TournamentList from '../tournament/List';
 import TournamentCreator from '../tournament/Creator';
 import TournamentDetail from '../tournament/Detail';
 import MatchScorer from '../match/Scorer';
-import PredefinedManager from '../user/PredefinedManager';
+import KatapgamaManager from '../user/KatapgamaManager';
 import { ViewState } from '../../hooks/useAppLogic';
 
 interface MainViewProps {
@@ -105,7 +105,7 @@ export const MainView = ({
       )}
 
       {view === 'manage' && user && (
-        <PredefinedManager 
+        <KatapgamaManager 
           user={user}
           onBack={() => setView('list')}
         />

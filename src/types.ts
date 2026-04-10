@@ -11,6 +11,7 @@ export enum GameMode {
   TEAM_MEXICANO = 'Team Mexicano',
   MIXED_MEXICANO = 'Mixed Mexicano',
   MIXED = 'Mixed',
+  KATAPGAMA_FUN_PADEL = 'Katapgama Fun Padel',
 }
 
 export enum ScoringMode {
@@ -65,6 +66,7 @@ export interface Tournament {
   useGoldenPoint?: boolean;
   qualifierSettings?: TournamentSettings;
   playoffSettings?: TournamentSettings;
+  isKatapgama?: boolean;
 }
 
 export interface Match {

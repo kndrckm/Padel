@@ -70,7 +70,7 @@ export function useAppLogic() {
     const q = query(collection(db, 'tournaments'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Tournament[] = [];
-      snapshot.forEach((d) => list.push({ id: d.id, ...d.data() } as Tournament));
+      snapshot.forEach((d) => list.push({ ...d.data(), id: d.id } as Tournament));
       setTournaments(list);
       
       if (selectedTournament) {
@@ -94,7 +94,7 @@ export function useAppLogic() {
     const q = query(collection(db, `tournaments/${selectedTournament.id}/matches`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Match[] = [];
-      snapshot.forEach((d) => list.push({ id: d.id, ...d.data() } as Match));
+      snapshot.forEach((d) => list.push({ ...d.data(), id: d.id } as Match));
       setMatches(list);
       
       // Keep activeMatch updated if it exists

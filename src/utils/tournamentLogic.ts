@@ -456,6 +456,15 @@ export function generateInitialMatches(
     const allMatches = generateTeamMatches(players, mode);
     const matchesPerStage = Math.floor(players.length / 4);
     initialMatches = allMatches.slice(0, Math.max(1, matchesPerStage));
+  } else if (mode === GameMode.KATAPGAMA_FUN_PADEL) {
+    return generateKatapgamaQualifier(players, courtsCount).map((m, i) => ({
+      ...m,
+      id: `q_k_${i}`,
+      tournamentId: '',
+      isPlayoff: false,
+      score1: 0, score2: 0, points1: 0, points2: 0,
+      sets1: [], sets2: [], serverIndex: 0
+    }));
   }
 
   // Assign courts and Stage 1 for any matches that don't have them
@@ -512,6 +521,7 @@ function generateSingleEliminationMatches(teams: string[][], courtsCount: number
         isSkeleton: !isStage1,
         court: (m % courtsCount) + 1,
         score1: 0, score2: 0, sets1: [], sets2: [],
+        serverIndex: 0,
         logicId: `s${s}_m${m}_u`,
         nextMatchId: s < totalStages ? `s${s + 1}_m${Math.floor(m / 2)}_u` : undefined
       });
@@ -565,6 +575,7 @@ function generateDoubleEliminationMatches(teams: string[][], courtsCount: number
         isSkeleton: !isStage1,
         court: (m % courtsCount) + 1,
         score1: 0, score2: 0, sets1: [], sets2: [],
+        serverIndex: 0,
         logicId: matchId,
         nextMatchId,
         losersMatchId,
@@ -603,6 +614,7 @@ function generateDoubleEliminationMatches(teams: string[][], courtsCount: number
         isSkeleton: true,
         court: (m % courtsCount) + 1,
         score1: 0, score2: 0, sets1: [], sets2: [],
+        serverIndex: 0,
         logicId: matchId,
         nextMatchId,
         isLosersBracket: true
@@ -622,6 +634,7 @@ function generateDoubleEliminationMatches(teams: string[][], courtsCount: number
     isSkeleton: true,
     court: 1,
     score1: 0, score2: 0, sets1: [], sets2: [],
+    serverIndex: 0,
     logicId: `gf_m0_u`,
     nextMatchId: `gf_reset`,
     isLosersBracket: false
@@ -636,9 +649,55 @@ function generateDoubleEliminationMatches(teams: string[][], courtsCount: number
     isSkeleton: true,
     court: 1,
     score1: 0, score2: 0, sets1: [], sets2: [],
+    serverIndex: 0,
     logicId: `gf_reset`,
     isLosersBracket: false
   });
+
+  return matches;
+}
+
+export function generateKatapgamaQualifier(players: Player[], courtsCount: number): GeneratedMatch[] {
+  const teams: string[][] = [];
+  for (let i = 0; i < players.length; i += 2) {
+    if (i + 1 < players.length) {
+      teams.push([players[i].name, players[i+1].name]);
+    }
+  }
+
+  // Shuffle teams for initial randomization
+  const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+  const matches: GeneratedMatch[] = [];
+
+  // Round 1 (8 matches) - Everyone plays once
+  for (let i = 0; i < 8; i++) {
+    matches.push({
+      team1: shuffledTeams[i * 2],
+      team2: shuffledTeams[i * 2 + 1],
+      stage: 1,
+      court: (i % courtsCount) + 1,
+      status: MatchStatus.PENDING,
+      score1: 0, score2: 0, sets1: [], sets2: []
+    });
+  }
+
+  // Round 2 (8 matches) - Everyone plays their second match
+  // Strategy to avoid repeat opponents
+  const round2Pairs = [
+    [0, 2], [4, 6], [8, 10], [12, 14],
+    [1, 3], [5, 7], [9, 11], [13, 15]
+  ];
+
+  for (let i = 0; i < round2Pairs.length; i++) {
+    matches.push({
+      team1: shuffledTeams[round2Pairs[i][0]],
+      team2: shuffledTeams[round2Pairs[i][1]],
+      stage: 2,
+      court: (i % courtsCount) + 1,
+      status: MatchStatus.PENDING,
+      score1: 0, score2: 0, sets1: [], sets2: []
+    });
+  }
 
   return matches;
 }

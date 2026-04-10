@@ -216,7 +216,10 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
   const lbMatches = matches.filter(m => m.isLosersBracket);
   const gfMatches = matches.filter(m => m.id?.startsWith('gf'));
 
-  const maxWBStage = wbMatches.length > 0 ? Math.max(...wbMatches.map(m => m.stage || 1), 1) : 1;
+  const isKatapgamaOrMixed = tournament.isKatapgama || tournament.mode === GameMode.MIXED;
+  const maxWBStageRaw = wbMatches.length > 0 ? Math.max(...wbMatches.map(m => m.stage || 1), 1) : 1;
+  const maxWBStage = isKatapgamaOrMixed ? Math.min(3, maxWBStageRaw) : maxWBStageRaw;
+
   const maxLBStage = lbMatches.length > 0 ? Math.max(...lbMatches.map(m => m.stage || 1), 1) : 0;
 
   const getStageName = (colIndex: number) => {

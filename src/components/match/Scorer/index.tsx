@@ -19,9 +19,10 @@ import {
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db } from '../../../lib/firebase';
-import { Match, Tournament, MatchStatus, ScoringMode } from '../../../types';
+import { Match, Tournament, MatchStatus, ScoringMode, GameMode } from '../../../types';
 import { PadelCourt } from './PadelCourt';
 import { useTennisLogic, TENNIS_POINTS } from '../../../hooks/useTennisLogic';
+import { KatapgamaLogo } from '../../common/KatapgamaLogo';
 
 interface MatchScorerProps {
   match: Match;
@@ -56,6 +57,27 @@ export default function MatchScorer({
   const setsToPlayLocal = match.setsToPlay || tournament.setsToPlay || 1;
   const gamesPerSetLocal = match.gamesPerSet || tournament.gamesPerSet || 6;
   const useGoldenPointLocal = match.useGoldenPoint ?? tournament.useGoldenPoint ?? true;
+  
+  // Real-time sync for collaboration
+  useEffect(() => {
+    setScore1(match.score1);
+    setScore2(match.score2);
+    setSets1(match.sets1);
+    setSets2(match.sets2);
+    setPoints1(match.points1 ?? (match.scoringMode === ScoringMode.TENNIS ? '0' : 0));
+    setPoints2(match.points2 ?? (match.scoringMode === ScoringMode.TENNIS ? '0' : 0));
+    setIsTiebreak(match.isTiebreak ?? false);
+    setServerIndex(match.serverIndex);
+  }, [
+    match.score1, 
+    match.score2, 
+    match.sets1, 
+    match.sets2, 
+    match.points1, 
+    match.points2, 
+    match.isTiebreak, 
+    match.serverIndex
+  ]);
 
   // History for undo/redo
   const [history, setHistory] = useState<any[]>([]);
@@ -355,10 +377,13 @@ export default function MatchScorer({
     >
       <div className="space-y-8">
         <div className="relative flex items-center justify-between">
-          <div className="flex-1">
+          <div className="flex-1 flex items-center gap-4">
             <button onClick={onBack} className="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-all">
               <ArrowLeft className="w-6 h-6 text-on-surface" />
             </button>
+            {tournament.isKatapgama && (
+              <KatapgamaLogo className="w-12 h-12" />
+            )}
           </div>
           
           <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center z-10">

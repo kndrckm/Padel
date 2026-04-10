@@ -36,49 +36,61 @@ export async function createTournament(
   }));
 
   try {
-    const tournamentRef = await addDoc(collection(db, 'tournaments'), {
+    const isKatapgama = mode === GameMode.KATAPGAMA_FUN_PADEL;
+    const effectiveMode = isKatapgama ? GameMode.TEAM_AMERICANO : (mode === GameMode.MIXED ? qualifierMode! : mode);
+    
+    // For Katapgama, force 16 points, 2 matches, 2 courts, and Team Americano qualifier
+    const finalPointsToPlay = isKatapgama ? 16 : pointsToPlay;
+    const finalNumberOfMatches = isKatapgama ? 2 : numberOfMatches;
+    const finalScoringMode = isKatapgama ? ScoringMode.AMERICANO : scoringMode;
+    const finalCourtsCount = isKatapgama ? 2 : courtsCount;
+
+    const tournamentData = {
       name,
-      mode,
+      mode: isKatapgama ? GameMode.MIXED : mode,
+      isKatapgama,
       creatorId: userId,
       status: 'active',
       createdAt: new Date().toISOString(),
       players: processedPlayers,
-      courtsCount,
-      pointsToPlay,
-      scoringMode,
-      numberOfMatches,
-      swissPools,
-      playoffTeams,
-      playoffType,
-      qualifierMode,
-      playoffMode,
+      courtsCount: finalCourtsCount,
+      pointsToPlay: finalPointsToPlay,
+      scoringMode: finalScoringMode,
+      numberOfMatches: finalNumberOfMatches,
+      swissPools: swissPools || null,
+      playoffTeams: isKatapgama ? 8 : (playoffTeams || null),
+      playoffType: isKatapgama ? 'single' : (playoffType || null),
+      qualifierMode: isKatapgama ? GameMode.TEAM_AMERICANO : (qualifierMode || null),
+      playoffMode: isKatapgama ? GameMode.SINGLE_ELIMINATION : (playoffMode || null),
       playoffStarted: false,
-      advancingTeamsCount,
-      setsToPlay,
-      gamesPerSet,
-      useGoldenPoint,
+      advancingTeamsCount: isKatapgama ? 8 : (advancingTeamsCount || null),
+      setsToPlay: isKatapgama ? 1 : (setsToPlay || null),
+      gamesPerSet: gamesPerSet || null,
+      useGoldenPoint: useGoldenPoint ?? true,
       qualifierSettings: {
-        scoringMode: scoringMode,
-        pointsToPlay: pointsToPlay,
-        setsToPlay: setsToPlay || 1,
+        scoringMode: finalScoringMode,
+        pointsToPlay: finalPointsToPlay,
+        setsToPlay: isKatapgama ? 1 : (setsToPlay || 1),
         gamesPerSet: gamesPerSet || 6,
         useGoldenPoint: useGoldenPoint ?? true
       },
       playoffSettings: {
         scoringMode: ScoringMode.TENNIS,
-        pointsToPlay: pointsToPlay,
-        setsToPlay: 3,
+        pointsToPlay: 21,
+        setsToPlay: 3, // Default for QF
         gamesPerSet: 6,
         useGoldenPoint: true
       },
       currentStage: 1
-    });
+    };
+
+    const tournamentRef = await addDoc(collection(db, 'tournaments'), tournamentData);
 
     const initialMatches = generateInitialMatches(
-      mode === GameMode.MIXED ? qualifierMode! : mode, 
+      mode, 
       processedPlayers, 
-      courtsCount, 
-      numberOfMatches, 
+      finalCourtsCount, 
+      finalNumberOfMatches, 
       swissPools
     );
 
@@ -88,16 +100,16 @@ export async function createTournament(
         tournamentId: tournamentRef.id,
         score1: 0,
         score2: 0,
-        points1: scoringMode === ScoringMode.TENNIS ? '0' : 0,
-        points2: scoringMode === ScoringMode.TENNIS ? '0' : 0,
+        points1: finalScoringMode === ScoringMode.TENNIS ? '0' : 0,
+        points2: finalScoringMode === ScoringMode.TENNIS ? '0' : 0,
         sets1: [],
         sets2: [],
         isTiebreak: false,
-        scoringMode,
-        setsToPlay: setsToPlay || (scoringMode === ScoringMode.TENNIS ? 3 : 1),
+        scoringMode: finalScoringMode,
+        setsToPlay: isKatapgama ? 1 : (setsToPlay || (finalScoringMode === ScoringMode.TENNIS ? 3 : 1)),
         gamesPerSet: gamesPerSet || 6,
         useGoldenPoint: useGoldenPoint ?? true,
-        pointsToPlay: pointsToPlay,
+        pointsToPlay: finalPointsToPlay,
         serverIndex: 0,
         isPlayoff: false,
         status: MatchStatus.PENDING,

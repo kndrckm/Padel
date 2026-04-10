@@ -43,11 +43,11 @@ export default function TournamentList({ tournaments, onSelect, onCreateNew, onM
         <div className="flex-1 flex justify-end items-center gap-4">
           <button 
             onClick={onManage}
-            className="flex items-center gap-3 bg-surface-container-low text-on-surface px-8 py-4 rounded-xl font-bold hover:bg-surface-container-high transition-all shadow-sm"
-            title="Manage Players & Teams"
+            className="flex items-center gap-3 bg-primary text-on-primary px-8 py-4 rounded-xl font-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20"
+            title="Manage Katapgama Teams"
           >
-            <UserCheck className="w-6 h-6" />
-            <span className="hidden md:inline">Manage Personnel</span>
+            <PadelBall className="w-6 h-6" />
+            <span className="hidden md:inline">Katapgama Pack</span>
           </button>
           <button 
             onClick={onLogout}

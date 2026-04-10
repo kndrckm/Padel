@@ -4,13 +4,24 @@ import { GeneratedMatch } from './tournamentLogic';
 export function getAdvancingTeams(
   leaderboard: any[],
   count: number,
-  isIndividualMode: boolean
+  isIndividualMode: boolean,
+  players?: Player[]
 ): string[][] {
   const topPlayers = leaderboard.slice(0, count);
   
   if (!isIndividualMode) {
-    // Already in teams (names in leaderboard are likely "Team Name" or "P1 & P2")
-    // If it's a team mode, leaderboard names are teammates joined by ' & ' or teamName
+    // If we have the full players list, we can resolve the names correctly for team modes
+    if (players && players.length > 0) {
+      return topPlayers.map(p => {
+        // Find all players that belong to this team name
+        const teammates = players.filter(pl => pl.teamName === p.name);
+        if (teammates.length >= 2) {
+          return [teammates[0].name, teammates[1].name];
+        }
+        // Fallback to splitting by ' & ' if it was stored that way
+        return p.name.split(' & ');
+      });
+    }
     return topPlayers.map(p => p.name.split(' & '));
   }
   
@@ -39,11 +50,22 @@ export function generatePlayoffMatches(
     scheduleTeams.push(['BYE', 'BYE']);
   }
 
-  // Seeding: 1 vs Last, 2 vs 2nd Last, etc.
+  // Recursive Seeding to properly distance top ranks (e.g. 1 & 2 meet only in Final)
+  let seedingMap = [0];
+  let currentGroup = 1;
+  while (currentGroup * 2 <= powerOf2) {
+    const nextSeeding: number[] = [];
+    for (const rank of seedingMap) {
+      nextSeeding.push(rank);
+      nextSeeding.push((currentGroup * 2) - 1 - rank);
+    }
+    seedingMap = nextSeeding;
+    currentGroup *= 2;
+  }
+
   const seededTeams: string[][] = [];
-  for (let i = 0; i < powerOf2 / 2; i++) {
-    seededTeams.push(scheduleTeams[i]);
-    seededTeams.push(scheduleTeams[powerOf2 - 1 - i]);
+  for (const rank of seedingMap) {
+    seededTeams.push(scheduleTeams[rank]);
   }
 
   if (type === 'single') {

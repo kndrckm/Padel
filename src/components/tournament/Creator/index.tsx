@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { GameMode, Player, ScoringMode } from '../../../types';
 import { PadelBall, ManIcon, WomanIcon } from '../../common/Icons';
-import { MODE_DESCRIPTIONS } from '../../../constants';
+import { KATAPGAMA_TEAMS } from '../../../constants';
+import { KatapgamaLogo } from '../../common/KatapgamaLogo';
 import { User } from 'firebase/auth';
 import { getPredefinedPlayers, getPredefinedTeams } from '../../../lib/userService';
 import { PredefinedPlayer, PredefinedTeam } from '../../../types';
@@ -87,7 +88,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
   }, [user.uid]);
 
   const activeMode = mode === GameMode.MIXED ? qualifierMode : mode;
-  const isTeamMode = activeMode === GameMode.TEAM_AMERICANO || activeMode === GameMode.TEAM_MEXICANO || activeMode === GameMode.ROUND_ROBIN || activeMode === GameMode.DOUBLE_ELIMINATION || activeMode === GameMode.SWISS_SYSTEM || activeMode === GameMode.SINGLE_ELIMINATION;
+  const isTeamMode = activeMode === GameMode.TEAM_AMERICANO || activeMode === GameMode.TEAM_MEXICANO || activeMode === GameMode.ROUND_ROBIN || activeMode === GameMode.DOUBLE_ELIMINATION || activeMode === GameMode.SWISS_SYSTEM || activeMode === GameMode.SINGLE_ELIMINATION || activeMode === GameMode.KATAPGAMA_FUN_PADEL;
   const isMixMode = activeMode === GameMode.MIX_AMERICANO || activeMode === GameMode.MIXED_MEXICANO;
   const isAmericanoVariant = [
     GameMode.NORMAL_AMERICANO,
@@ -96,10 +97,34 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
     GameMode.SUPER_MEXICANO,
     GameMode.MIXED_MEXICANO,
     GameMode.TEAM_AMERICANO,
-    GameMode.TEAM_MEXICANO
+    GameMode.TEAM_MEXICANO,
+    GameMode.KATAPGAMA_FUN_PADEL
   ].includes(activeMode);
 
-  // Calculate default matches
+  const isKatapgama = mode === GameMode.KATAPGAMA_FUN_PADEL;
+
+  // Auto-configure for Katapgama Fun Padel
+  React.useEffect(() => {
+    if (isKatapgama) {
+      setCourtsCount(2);
+      setScoringMode(ScoringMode.AMERICANO); // Initial for qualifier
+      setPointsToPlay(16);
+      setCustomMatchCount(2);
+      setPlayoffTeams(8);
+      setQualifierMode(GameMode.TEAM_AMERICANO);
+      setPlayoffMode(GameMode.SINGLE_ELIMINATION);
+      
+      // Ensure 16 teams (32 players)
+      if (players.length !== 32) {
+        const newPlayers: Player[] = Array.from({ length: 32 }, (_, i) => ({
+          name: '',
+          gender: 'man',
+          teamName: `TEAM ${Math.floor(i / 2) + 1}`
+        }));
+        setPlayers(newPlayers);
+      }
+    }
+  }, [mode]);
   const defaultMatches = useMemo(() => {
     if (isTeamMode) {
       const teamsCount = Math.floor(players.length / 2);
@@ -194,6 +219,30 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
     setPlayers(next);
   };
 
+  const loadKatapgamaTeams = async () => {
+    try {
+      const docRef = doc(db, `users/${user.uid}/settings`, 'katapgama_pack');
+      const d = await getDoc(docRef);
+      const katapgamaPlayers: Player[] = [];
+      
+      if (d.exists()) {
+        const teamsData = d.data().teams as any[];
+        teamsData.forEach(t => {
+          katapgamaPlayers.push({ name: t.name, gender: 'man', teamName: t.teamName });
+          katapgamaPlayers.push({ name: t.partner, gender: 'man', teamName: t.teamName });
+        });
+      } else {
+        KATAPGAMA_TEAMS.forEach(t => {
+          katapgamaPlayers.push({ name: t.name, gender: 'man', teamName: t.teamName });
+          katapgamaPlayers.push({ name: t.partner, gender: 'man', teamName: t.teamName });
+        });
+      }
+      setPlayers(katapgamaPlayers);
+    } catch (error) {
+      console.error('Error loading katapgama teams:', error);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setNotification(null);
@@ -279,9 +328,14 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
       className="max-w-5xl mx-auto"
     >
       <div className="flex items-center gap-6 mb-12">
-        <button onClick={onCancel} className="p-3 bg-surface-container-low rounded-xl hover:bg-surface-container-high transition-all">
-          <ArrowLeft className="w-6 h-6 text-on-surface" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onCancel} className="p-3 bg-surface-container-low rounded-xl hover:bg-surface-container-high transition-all group">
+            <ArrowLeft className="w-6 h-6 text-on-surface/60 group-hover:text-on-surface" />
+          </button>
+          {mode === GameMode.KATAPGAMA_FUN_PADEL && (
+            <KatapgamaLogo className="w-10 h-10" />
+          )}
+        </div>
         <div>
           <p className="label-sm mb-1">New Event</p>
           <h2 className="text-4xl font-bold text-on-surface">Create Tournament</h2>
@@ -292,8 +346,9 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
         <div className="bg-surface-container-lowest p-10 rounded-2xl shadow-sm space-y-10 border border-on-surface/5">
           
           {/* Top Row: Name, Courts, Points */}
+          {/* Top Row: Name and optional settings */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
-            <div className="lg:col-span-5">
+            <div className={isKatapgama ? "lg:col-span-12" : "lg:col-span-5"}>
               <label className="label-sm mb-3 block">Tournament Name</label>
               <input 
                 type="text" 
@@ -305,173 +360,179 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
               />
             </div>
 
-            <div className="lg:col-span-3">
-              <label className="label-sm mb-3 block">Courts Count (1-15)</label>
-              <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setDirection(-1);
-                    setCourtsCount(Math.max(1, courtsCount - 1));
-                  }}
-                  className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
-                >
-                  <Minus className="w-5 h-5" />
-                </button>
-                <div className="w-12 h-full flex items-center justify-center overflow-hidden relative">
-                  <AnimatePresence mode="popLayout" custom={direction}>
-                    <motion.span
-                      key={courtsCount}
-                      custom={direction}
-                      initial={(d: number) => ({ y: d === 1 ? -20 : 20, opacity: 0 })}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={(d: number) => ({ y: d === 1 ? 20 : -20, opacity: 0 })}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      className="absolute font-bold text-2xl text-on-surface"
+            {!isKatapgama && (
+              <>
+                <div className="lg:col-span-3">
+                  <label className="label-sm mb-3 block">Courts Count (1-15)</label>
+                  <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-xl w-fit h-16">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setDirection(-1);
+                        setCourtsCount(Math.max(1, courtsCount - 1));
+                      }}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
                     >
-                      {courtsCount}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setDirection(1);
-                    setCourtsCount(Math.min(15, courtsCount + 1));
-                  }}
-                  className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="lg:col-span-4">
-              <label className="label-sm mb-3 block">Scoring System</label>
-              <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
-                <button
-                  type="button"
-                  onClick={() => setScoringMode(ScoringMode.AMERICANO)}
-                  className={`flex-1 rounded-lg font-bold text-sm transition-all ${scoringMode === ScoringMode.AMERICANO ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-                >
-                  Americano (Total Points)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScoringMode(ScoringMode.TENNIS)}
-                  className={`flex-1 rounded-lg font-bold text-sm transition-all ${scoringMode === ScoringMode.TENNIS ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-                >
-                  Tennis (Sets & Games)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            {scoringMode === ScoringMode.AMERICANO ? (
-              <div className="lg:col-span-12">
-                <label className="label-sm mb-3 block">Points to Play</label>
-                <div className="relative w-full h-16 pointer-events-auto">
-                  <div className="absolute top-[70%] left-[10%] right-[10%] h-1.5 bg-surface-variant rounded-full -translate-y-1/2" />
-                  
-                  <div className="absolute inset-0 flex items-center w-full">
-                    {[16, 21, 24, 31, 32].map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPointsToPlay(p)}
-                        className="relative z-10 flex flex-col items-center justify-center h-full group outline-none cursor-pointer"
-                        style={{ width: '20%' }}
-                      >
-                        <span className={`absolute top-0 text-sm font-bold transition-all duration-300 ${pointsToPlay === p ? 'text-primary scale-110' : 'text-on-surface/40 group-hover:text-on-surface/60'}`}>
-                          {p}
-                        </span>
-                        <div className={`absolute top-[70%] -translate-y-1/2 w-4 h-4 rounded-full transition-colors duration-300 ${pointsToPlay === p ? 'bg-transparent' : 'bg-surface-variant'}`} />
-                      </button>
-                    ))}
-                  </div>
-
-                  <motion.div
-                    className="absolute top-[70%] -translate-y-1/2 pointer-events-none z-20 flex items-center justify-center"
-                    style={{ width: '20%' }}
-                    initial={false}
-                    animate={{ 
-                      left: `${[16, 21, 24, 31, 32].indexOf(pointsToPlay) * 20}%`,
-                    }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  >
-                    <div className="bg-surface-container-lowest rounded-full p-1 shadow-sm">
-                      <motion.div
-                        animate={{ rotate: pointsToPlay * 15 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                      >
-                        <PadelBall className="w-6 h-6 text-primary" />
-                      </motion.div>
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <div className="w-12 h-full flex items-center justify-center overflow-hidden relative">
+                      <AnimatePresence mode="popLayout" custom={direction}>
+                        <motion.span
+                          key={courtsCount}
+                          custom={direction}
+                          initial={(d: number) => ({ y: d === 1 ? -20 : 20, opacity: 0 })}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={(d: number) => ({ y: d === 1 ? 20 : -20, opacity: 0 })}
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          className="absolute font-bold text-2xl text-on-surface"
+                        >
+                          {courtsCount}
+                        </motion.span>
+                      </AnimatePresence>
                     </div>
-                  </motion.div>
-                </div>
-              </div>
-            ) : (
-              <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-10">
-                <div>
-                  <label className="label-sm mb-3 block">Match Format</label>
-                  <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
-                    {[
-                      { val: 1, label: '1 Set' },
-                      { val: 3, label: 'Best of 3' },
-                      { val: 30, label: '3rd Set MTB' }
-                    ].map(opt => (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => setSetsToPlay(opt.val)}
-                        className={`flex-1 rounded-lg font-bold text-xs transition-all ${setsToPlay === opt.val ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-                        title={opt.val === 30 ? "Best of 3 with 3rd Set Match Tie-break (10 points)" : opt.label}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label-sm mb-3 block">Games per Set</label>
-                  <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
-                    {[4, 6].map(g => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setGamesPerSet(g)}
-                        className={`flex-1 rounded-lg font-bold text-sm transition-all ${gamesPerSet === g ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-                      >
-                        {g} Games
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label-sm mb-3 block">Deuce Rule</label>
-                  <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
-                    <button
+                    <button 
                       type="button"
-                      onClick={() => setUseGoldenPoint(false)}
-                      className={`flex-1 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${!useGoldenPoint ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                      onClick={() => {
+                        setDirection(1);
+                        setCourtsCount(Math.min(15, courtsCount + 1));
+                      }}
+                      className="w-12 h-full bg-surface-container-lowest rounded-xl flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95"
                     >
-                      Advantage
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUseGoldenPoint(true)}
-                      className={`flex-1 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${useGoldenPoint ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
-                    >
-                      Golden Point
+                      <Plus className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
-              </div>
+
+                <div className="lg:col-span-4">
+                  <label className="label-sm mb-3 block">Scoring System</label>
+                  <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
+                    <button
+                      type="button"
+                      onClick={() => setScoringMode(ScoringMode.AMERICANO)}
+                      className={`flex-1 rounded-lg font-bold text-sm transition-all ${scoringMode === ScoringMode.AMERICANO ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                    >
+                      Americano
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScoringMode(ScoringMode.TENNIS)}
+                      className={`flex-1 rounded-lg font-bold text-sm transition-all ${scoringMode === ScoringMode.TENNIS ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                    >
+                      Tennis
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
+
+          {!isKatapgama && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              {scoringMode === ScoringMode.AMERICANO ? (
+                <div className="lg:col-span-12">
+                  <label className="label-sm mb-3 block">Points to Play</label>
+                  <div className="relative w-full h-16 pointer-events-auto">
+                    <div className="absolute top-[70%] left-[10%] right-[10%] h-1.5 bg-surface-variant rounded-full -translate-y-1/2" />
+                    
+                    <div className="absolute inset-0 flex items-center w-full">
+                      {[16, 21, 24, 31, 32].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPointsToPlay(p)}
+                          className="relative z-10 flex flex-col items-center justify-center h-full group outline-none cursor-pointer"
+                          style={{ width: '20%' }}
+                        >
+                          <span className={`absolute top-0 text-sm font-bold transition-all duration-300 ${pointsToPlay === p ? 'text-primary scale-110' : 'text-on-surface/40 group-hover:text-on-surface/60'}`}>
+                            {p}
+                          </span>
+                          <div className={`absolute top-[70%] -translate-y-1/2 w-4 h-4 rounded-full transition-colors duration-300 ${pointsToPlay === p ? 'bg-transparent' : 'bg-surface-variant'}`} />
+                        </button>
+                      ))}
+                    </div>
+
+                    <motion.div
+                      className="absolute top-[70%] -translate-y-1/2 pointer-events-none z-20 flex items-center justify-center"
+                      style={{ width: '20%' }}
+                      initial={false}
+                      animate={{ 
+                        left: `${[16, 21, 24, 31, 32].indexOf(pointsToPlay) * 20}%`,
+                      }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    >
+                      <div className="bg-surface-container-lowest rounded-full p-1 shadow-sm">
+                        <motion.div
+                          animate={{ rotate: pointsToPlay * 15 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                        >
+                          <PadelBall className="w-6 h-6 text-primary" />
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              ) : (
+                <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-10">
+                  <div>
+                    <label className="label-sm mb-3 block">Match Format</label>
+                    <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
+                      {[
+                        { val: 1, label: '1 Set' },
+                        { val: 3, label: 'Best of 3' },
+                        { val: 30, label: '3rd Set MTB' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => setSetsToPlay(opt.val)}
+                          className={`flex-1 rounded-lg font-bold text-xs transition-all ${setsToPlay === opt.val ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                          title={opt.val === 30 ? "Best of 3 with 3rd Set Match Tie-break (10 points)" : opt.label}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label-sm mb-3 block">Games per Set</label>
+                    <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
+                      {[4, 6].map(g => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setGamesPerSet(g)}
+                          className={`flex-1 rounded-lg font-bold text-sm transition-all ${gamesPerSet === g ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                        >
+                          {g} Games
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label-sm mb-3 block">Deuce Rule</label>
+                    <div className="flex bg-surface-container-low p-1.5 rounded-xl h-16">
+                      <button
+                        type="button"
+                        onClick={() => setUseGoldenPoint(false)}
+                        className={`flex-1 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${!useGoldenPoint ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                      >
+                        Advantage
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUseGoldenPoint(true)}
+                        className={`flex-1 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${useGoldenPoint ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}
+                      >
+                        Golden Point
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="label-sm mb-4 block">Game Mode</label>
@@ -500,6 +561,12 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                   title: 'Mixed Mode',
                   description: 'Qualifier stage followed by a Playoff bracket.',
                   modes: [GameMode.MIXED]
+                },
+                {
+                  id: 'Katapgama',
+                  title: 'Katapgama Exclusive',
+                  description: 'The official Katapgama Fun Padel format. 16 Teams, 2 Stage Qualifier (16pts) + Playoff (Tennis).',
+                  modes: [GameMode.KATAPGAMA_FUN_PADEL]
                 }
               ].map((cat) => {
                 const isSelected = cat.modes.includes(mode);
@@ -574,7 +641,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                 );
               })}
             </div>
-            {!([GameMode.SINGLE_ELIMINATION, GameMode.DOUBLE_ELIMINATION, GameMode.SWISS_SYSTEM] as string[]).includes(mode) && (
+            {!isKatapgama && !([GameMode.SINGLE_ELIMINATION, GameMode.DOUBLE_ELIMINATION, GameMode.SWISS_SYSTEM] as string[]).includes(mode) && (
               <>
                 <div className="mt-10">
                   <label className="label-sm mb-3 block">
@@ -719,25 +786,35 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                 {isTeamMode ? 'Teams (Max 16 Teams)' : 'Players (Max 32)'}
               </label>
               <div className="flex items-center gap-3">
-                <button 
-                  type="button" 
-                  onClick={addPlayer}
-                  disabled={isTeamMode ? players.length / 2 >= 16 : players.length >= 32}
-                  className="bg-on-surface text-surface px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-on-surface/90 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {isTeamMode ? 'Add Team' : 'Add Player'}
-                </button>
-                {(isTeamMode ? predefinedTeams.length > 0 : predefinedPlayers.length > 0) && (
+                {!isKatapgama && (
                   <button 
                     type="button" 
-                    onClick={() => setShowQuickAdd(isTeamMode ? 'team' : 'player')}
+                    onClick={addPlayer}
+                    disabled={isTeamMode ? players.length / 2 >= 16 : players.length >= 32}
+                    className="bg-on-surface text-surface px-6 py-2.5 rounded-xl text-xs font-bold hover:bg-on-surface/90 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {isTeamMode ? 'Add Team' : 'Add Player'}
+                  </button>
+                )}
+                {predefinedTeams.length > 0 && (
+                  <button 
+                    type="button" 
+                    onClick={() => setShowQuickAdd('team')}
                     className="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-xl text-xs font-bold hover:brightness-95 transition-all shadow-sm flex items-center gap-2"
                   >
                     <UserCheck className="w-4 h-4" />
                     Quick Add
                   </button>
                 )}
+                <button 
+                  type="button" 
+                  onClick={loadKatapgamaTeams}
+                  className="bg-yellow-500/10 text-yellow-600 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-yellow-500/20 transition-all shadow-sm flex items-center gap-2 border border-yellow-500/20"
+                >
+                  <Trophy className="w-4 h-4" />
+                  Load Katapgama Pack
+                </button>
               </div>
             </div>
             {isTeamMode ? (
@@ -767,13 +844,15 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                         placeholder={`PLAYER ${teamIdx * 2 + 2}`}
                         className="flex-1 px-3 py-2 bg-transparent border-none focus:ring-0 outline-none transition-all font-medium text-sm text-on-surface placeholder:text-on-surface/30 min-w-0 w-full"
                       />
-                      <button
-                        type="button"
-                        onClick={() => removeTeam(teamIdx)}
-                        className="p-2 text-on-surface/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all shrink-0 self-end md:self-auto"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      {!isKatapgama && (
+                        <button
+                          type="button"
+                          onClick={() => removeTeam(teamIdx)}
+                          className="p-2 text-on-surface/30 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all shrink-0 self-end md:self-auto"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
