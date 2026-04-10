@@ -19,22 +19,22 @@ const PlayerMarker = ({ name, isServer, onClick }: PlayerMarkerProps) => {
       <motion.div 
         initial={false}
         animate={isServer ? { scale: 1.15, y: -8 } : { scale: 1, y: 0 }}
-        className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-xl transition-all duration-500 ${isServer ? 'bg-[#FDE047] border-white' : 'bg-white/10 border-white/30 backdrop-blur-md group-hover:bg-white/20'}`}
+        className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-xl transition-all duration-500 ${isServer ? 'bg-[#fa4615] border-white' : 'bg-white/10 border-white/30 backdrop-blur-md group-hover:bg-white/20'}`}
       >
-        <span className={`text-xs font-bold ${isServer ? 'text-[#1A1A1A]' : 'text-white'}`}>
+        <span className={`text-xs font-bold ${isServer ? 'text-white' : 'text-white'}`}>
           {name.split(' ').map(n => n[0]).join('')}
         </span>
         {isServer && (
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-            className="absolute -top-1 -right-1 w-6 h-6 bg-[#FDE047] rounded-full flex items-center justify-center shadow-md border border-white"
+            className="absolute -top-1 -right-1 w-6 h-6 bg-[#fa4615] rounded-full flex items-center justify-center shadow-md border border-white"
           >
-            <PadelBall className="w-4 h-4 text-[#1A1A1A]" />
+            <PadelBall className="w-4 h-4 text-white" />
           </motion.div>
         )}
       </motion.div>
-      <span className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap group-hover:text-[#FDE047] transition-colors">{name}</span>
+      <span className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap group-hover:text-[#fa4615] transition-colors">{name}</span>
     </div>
   );
 };
@@ -73,7 +73,7 @@ const ScoreSelector = ({ value, options, onSelect, onClose, title }: ScoreSelect
             <button
               key={opt}
               onClick={() => { onSelect(opt); onClose(); }}
-              className={`h-16 rounded-2xl font-black text-xl transition-all ${value === opt ? 'bg-[#FDE047] text-[#1A1A1A] shadow-lg scale-110' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'}`}
+              className={`h-16 rounded-2xl font-black text-xl transition-all ${value === opt ? 'bg-[#fa4615] text-white shadow-lg scale-110' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'}`}
             >
               {opt}
             </button>
@@ -165,7 +165,7 @@ export const PadelCourt = ({
             <motion.div 
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="px-4 py-1.5 bg-[#FDE047] text-[#1A1A1A] rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-lg border border-white"
+              className="px-4 py-1.5 bg-[#fa4615] text-white rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-lg border border-white"
             >
               Tiebreak
             </motion.div>
@@ -204,7 +204,7 @@ export const PadelCourt = ({
               <button 
                 onClick={() => !isMaxed && onScoreUpdate(1, 1)}
                 disabled={isMaxed}
-                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
+                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#fa4615] text-white hover:scale-110 active:scale-95 shadow-[#fa4615]/30'}`}
               >
                 <Plus className="w-10 h-10" strokeWidth={5} />
               </button>
@@ -237,7 +237,7 @@ export const PadelCourt = ({
               <button 
                 onClick={() => !isMaxed && onScoreUpdate(2, 1)}
                 disabled={isMaxed}
-                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
+                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#fa4615] text-white hover:scale-110 active:scale-95 shadow-[#fa4615]/30'}`}
               >
                 <Plus className="w-10 h-10" strokeWidth={5} />
               </button>

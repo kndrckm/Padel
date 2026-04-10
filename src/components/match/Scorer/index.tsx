@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import { 
   ArrowLeft, 
   Trophy, 
@@ -359,6 +360,15 @@ export default function MatchScorer({
       status: MatchStatus.COMPLETED,
       winner
     });
+
+    // Celebration Gimmick
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#fa4615', '#8A9A5B', '#ffffff']
+    });
+
     onBack();
   };
 
@@ -487,41 +497,14 @@ export default function MatchScorer({
         </div>
 
         {/* Controls & History in Next Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Set History hidden as requested */}
-          {/* 
-          <div className="lg:col-span-8 flex flex-col gap-8">
-            ... 
-          </div>
-          */}
-
-          <div className="lg:col-span-4 space-y-6">
-            <div className="pt-0 flex flex-col gap-4">
-              {/* Finish Current Set button hidden as requested */}
-              {/* 
-              <button 
-                onClick={handleSet} 
-                className="w-full py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest bg-surface-container-high text-on-surface hover:bg-on-surface hover:text-surface-container-lowest transition-all shadow-sm"
-              >
-                Finish Current Set
-              </button>
-              */}
-              <button 
-                onClick={complete} 
-                className="w-full bg-[#FDE047] text-on-surface py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#FDE047]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
-              >
-                Confirm Match Result
-              </button>
-            </div>
-
-            {/* Quick Actions / Match Status */}
-            <div className="px-8 py-7 bg-primary-container/10 rounded-[2.5rem] border border-primary/10 flex items-center justify-between mt-4">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Match Progress</span>
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_12px_rgba(253,224,71,0.5)]" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface">Live Scoring</span>
-              </div>
-            </div>
+        <div className="flex flex-col items-center justify-center pt-4">
+          <div className="w-full max-w-md">
+            <button 
+              onClick={complete} 
+              className="w-full bg-[#fa4615] text-white py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#fa4615]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Confirm Match Result
+            </button>
           </div>
         </div>
       </div>

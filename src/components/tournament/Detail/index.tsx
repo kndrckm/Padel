@@ -25,6 +25,7 @@ import { getAdvancingTeams, generatePlayoffMatches } from '../../../utils/promot
 import { Shuffle, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { KatapgamaLogo } from '../../common/KatapgamaLogo';
+import { ShufflingOverlay } from '../../common/ShufflingOverlay';
 
 
 interface TournamentDetailProps {
@@ -93,6 +94,8 @@ export default function TournamentDetail({
   const [showShareTooltip, setShowShareTooltip] = useState(false);
   const [advancingTeamsPreview, setAdvancingTeamsPreview] = useState<string[][] | null>(null);
   const [isResetingPlayoff, setIsResetingPlayoff] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const [shuffleMatches, setShuffleMatches] = useState<Match[]>([]);
 
 
   const handleShare = () => {
@@ -251,7 +254,7 @@ export default function TournamentDetail({
       // Final fallback to ensure stable rendering if opponents performed identically
       return a.name.localeCompare(b.name);
     });
-  }, [tournament, matches]);
+  }, [tournament, matches, players]);
 
   const generateNextStage = async () => {
     const currentStage = tournament.currentStage || 1;
@@ -300,8 +303,12 @@ export default function TournamentDetail({
         }
       }
       
+        }
+      }
+      
       await onUpdate({ currentStage: nextStage });
-      setTab(nextStage.toString());
+      setShuffleMatches(matchPairs as Match[]);
+      setIsShuffling(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `tournaments/${tournament.id}`);
     }
@@ -432,7 +439,21 @@ export default function TournamentDetail({
   }, [tournament.currentStage, matches, tab, tournament.isKatapgama]);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full py-10">
+    <>
+      <AnimatePresence>
+        {isShuffling && (
+          <ShufflingOverlay 
+            matches={shuffleMatches} 
+            players={tournament.players} 
+            onComplete={() => {
+              setIsShuffling(false);
+              setTab((tournament.currentStage || 1).toString());
+            }} 
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full py-10">
       <div className="w-full max-w-7xl mx-auto px-6 md:px-12 mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="flex items-start gap-6">
@@ -694,6 +715,7 @@ export default function TournamentDetail({
           />
         )}
       </AnimatePresence>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }

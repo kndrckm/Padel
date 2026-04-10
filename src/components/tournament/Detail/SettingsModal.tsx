@@ -169,9 +169,9 @@ export const SettingsModal = ({ tournament, onClose, onSave }: SettingsModalProp
         </div>
 
         <div className="p-10 overflow-y-auto no-scrollbar flex-1 space-y-10">
-          <div className="bg-[#FDE047]/10 border border-[#FDE047]/20 p-6 rounded-[2rem] flex items-center gap-6">
-            <AlertCircle className="w-8 h-8 text-[#FDE047] flex-shrink-0" />
-            <p className="text-xs font-black text-[#FDE047] leading-relaxed uppercase tracking-wider">
+          <div className="bg-[#fa4615]/10 border border-[#fa4615]/20 p-6 rounded-[2rem] flex items-center gap-6">
+            <AlertCircle className="w-8 h-8 text-[#fa4615] flex-shrink-0" />
+            <p className="text-xs font-black text-[#fa4615] leading-relaxed uppercase tracking-wider">
               Note: Changes will propagate to all non-completed matches immediately.
             </p>
           </div>
