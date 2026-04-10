@@ -226,14 +226,19 @@ export function generateNextStageMatches(
       (tournament.mode === GameMode.TEAM_MEXICANO && currentStage >= 1) ||
       (tournament.mode === GameMode.KATAPGAMA_FUN_PADEL && currentStage === 1)) {
     const playedPairs = new Set<string>();
+    const resolveTeam = (pNames: string[]) => {
+      const p = tournament.players?.find((player: any) => player.name === pNames[0]);
+      return p?.teamName || pNames.sort().join(' & ');
+    };
+
     matches.filter(m => !m.deleted).forEach(m => {
       if (m.logicId && m.logicId.includes('|')) {
         const [t1, t2] = m.logicId.split('|');
         playedPairs.add([t1, t2].sort().join(' vs '));
       } else {
-        const p1 = [...m.team1].sort().join(' & ');
-        const p2 = [...m.team2].sort().join(' & ');
-        playedPairs.add([p1, p2].sort().join(' vs '));
+        const t1 = resolveTeam(m.team1);
+        const t2 = resolveTeam(m.team2);
+        playedPairs.add([t1, t2].sort().join(' vs '));
       }
     });
 
@@ -269,8 +274,8 @@ export function generateNextStageMatches(
         if (availableItems.length < 2) break;
         const t1Name = availableItems[0];
         
-        // WIDENED MATCHMAKING: Pick from the next 3 available ranks to add variety
-        const poolSize = Math.min(3, availableItems.length - 1);
+        // WIDENED MATCHMAKING: Pick from the next 4 available ranks to add variety
+        const poolSize = Math.min(4, availableItems.length - 1);
         const opponentPool = availableItems.slice(1, poolSize + 1);
         let t2Name = opponentPool[Math.floor(Math.random() * opponentPool.length)];
         
@@ -722,13 +727,23 @@ export function generateKatapgamaQualifier(players: Player[], courtsCount: numbe
 
   // Round 1 (8 matches) - Everyone plays once
   for (let i = 0; i < 8; i++) {
+    const t1 = shuffledTeams[i * 2];
+    const t2 = shuffledTeams[i * 2 + 1];
+    
+    // Resolve Team names for logicId
+    const resolveTeamName = (pNames: string[]) => {
+      const p = players.find(player => player.name === pNames[0]);
+      return p?.teamName || pNames.join(' & ');
+    };
+
     matches.push({
-      team1: shuffledTeams[i * 2],
-      team2: shuffledTeams[i * 2 + 1],
+      team1: t1,
+      team2: t2,
       stage: 1,
       court: (i % courtsCount) + 1,
       status: MatchStatus.PENDING,
-      score1: 0, score2: 0, sets1: [], sets2: []
+      score1: 0, score2: 0, sets1: [], sets2: [],
+      logicId: `${resolveTeamName(t1)}|${resolveTeamName(t2)}`
     });
   }
 
