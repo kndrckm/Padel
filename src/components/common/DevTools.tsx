@@ -117,7 +117,7 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
       for (const tDoc of testTournaments) {
         const tData = tDoc.data();
         const mSnap = await getDocs(collection(db, `tournaments/${tDoc.id}/matches`));
-        const tMatches = mSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+        const tMatches = mSnap.docs.map(d => ({ ...d.data(), id: d.id } as Match));
         
         // 1. Calculate Leaderboard after Stage 1 to verify Mexicano Logic
         const stage1Matches = tMatches.filter(m => m.stage === 1 && !m.isPlayoff && m.status === MatchStatus.COMPLETED);
@@ -276,7 +276,7 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
 
       const getSnapshot = async (id: string) => {
         const mSnap = await getDocs(collection(db, `tournaments/${id}/matches`));
-        return mSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+        return mSnap.docs.map(d => ({ ...d.data(), id: d.id } as Match));
       };
 
       const calculateAuditLeaderboard = (matchesList: Match[], tData: any) => {
