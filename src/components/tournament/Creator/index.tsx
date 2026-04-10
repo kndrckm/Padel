@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { GameMode, Player, ScoringMode } from '../../../types';
 import { PadelBall, ManIcon, WomanIcon } from '../../common/Icons';
-import { KATAPGAMA_TEAMS, MODE_DESCRIPTIONS } from '../../../constants';
+import { KATAPGAMA_TEAMS } from '../../../constants';
 import { KatapgamaLogo } from '../../common/KatapgamaLogo';
 import { User } from 'firebase/auth';
 import { getPredefinedPlayers, getPredefinedTeams } from '../../../lib/userService';
@@ -41,6 +41,22 @@ interface TournamentCreatorProps {
     useGoldenPoint?: boolean
   ) => Promise<void>;
 }
+
+const MODE_DESCRIPTIONS: Record<string, string> = {
+  ["Single Elimination"]: "Knockout format where the winner advances and the loser is eliminated.",
+  ["Double Elimination"]: "A knockout format where you must lose two matches to be eliminated.",
+  ["Round Robin"]: "A mix of Swiss stage followed by a playoff bracket (Single or Double Elimination).",
+  ["Swiss System"]: "Non-eliminating format where you play opponents with a similar win/loss record.",
+  ["Normal Americano"]: "All players play with everyone else exactly one time.",
+  ["Mix Americano"]: "Teams are drawn with one woman and one man. Requires equal gender distribution (max 24 players).",
+  ["Mexicano"]: "Starts with an Americano qualifier stage, then switches to dynamic Mexicano matchmaking.",
+  ["Super Mexicano"]: "Like Mexicano but with extra points awarded for playing on (or closer to) the winning court.",
+  ["Team Americano"]: "Fixed teams play against all other teams exactly one time.",
+  ["Team Mexicano"]: "Mexicano format played with fixed teams.",
+  ["Mixed Mexicano"]: "Dynamic mixed matchmaking based on leaderboard rankings.",
+  ["Mixed"]: "A qualifier stage (any mode) followed by a playoff bracket stage.",
+  ["Katapgama Fun Padel"]: "Qualifier stage (16 pts) followed by Playoff (Tennis scoring). Fixed 16 teams."
+};
 
 export default function TournamentCreator({ onCancel, user, onCreate }: TournamentCreatorProps) {
   const [name, setName] = useState('');
