@@ -252,7 +252,8 @@ export function generateNextStageMatches(
       const availableItems = sortedPlayers
         .filter(p => !matchPairs.some(mp => {
           if (isTeamMode) {
-            return mp.logicId === p || mp.team1.includes(p) || mp.team2.includes(p); // logicId is team name for team modes
+            // Check if this team name is part of the logicId (which stores "TeamA|TeamB")
+            return mp.logicId?.split('|').includes(p);
           }
           return mp.team1.includes(p) || mp.team2.includes(p);
         }))
@@ -279,7 +280,7 @@ export function generateNextStageMatches(
           team2: getTeamMembers(t2Name), 
           stage: nextStage, 
           court: (m % courtsCount) + 1,
-          logicId: t1Name
+          logicId: `${t1Name}|${t2Name}` // Store BOTH team names to prevent duplicates
         });
         
         tempStats.set(t1Name, tempStats.get(t1Name)! + 1);
