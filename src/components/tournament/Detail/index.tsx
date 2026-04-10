@@ -48,7 +48,7 @@ export default function TournamentDetail({
   isCreator,
   user
 }: TournamentDetailProps) {
-  const isStageBasedMode = [
+  const isStageBasedMode = tournament.isKatapgama || [
     GameMode.MEXICANO, 
     GameMode.SUPER_MEXICANO,
     GameMode.TEAM_MEXICANO,
