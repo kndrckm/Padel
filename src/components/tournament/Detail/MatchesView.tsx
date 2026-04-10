@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, CheckCircle, Play, Users } from 'lucide-react';
 import { Match, MatchStatus, Player } from '../../../types';
 import { db } from '../../../lib/firebase';
