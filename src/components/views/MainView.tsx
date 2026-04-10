@@ -16,6 +16,7 @@ import TournamentDetail from '../tournament/Detail';
 import MatchScorer from '../match/Scorer';
 import KatapgamaManager from '../user/KatapgamaManager';
 import { ViewState } from '../../hooks/useAppLogic';
+import DevTools from '../common/DevTools';
 
 interface MainViewProps {
   view: ViewState;
@@ -111,6 +112,11 @@ export const MainView = ({
           onBack={() => setView('list')}
         />
       )}
+      <DevTools 
+        user={user} 
+        currentTournament={selectedTournament || undefined} 
+        matches={matches} 
+      />
     </AnimatePresence>
   );
 };
