@@ -8,7 +8,8 @@ import {
   Redo2, 
   Save, 
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  PartyPopper
 } from 'lucide-react';
 import { 
   doc, 
@@ -24,6 +25,7 @@ import { Match, Tournament, MatchStatus, ScoringMode, GameMode } from '../../../
 import { PadelCourt } from './PadelCourt';
 import { useTennisLogic, TENNIS_POINTS } from '../../../hooks/useTennisLogic';
 import { KatapgamaLogo } from '../../common/KatapgamaLogo';
+import { ChampionOverlay } from '../../common/ChampionOverlay';
 
 interface MatchScorerProps {
   match: Match;
@@ -51,6 +53,9 @@ export default function MatchScorer({
   const [isTiebreak, setIsTiebreak] = useState(match.isTiebreak ?? false);
   const [serverIndex, setServerIndex] = useState(match.serverIndex);
   const [presenceUsers, setPresenceUsers] = useState<any[]>([]);
+  const [showChampionOverlay, setShowChampionOverlay] = useState(false);
+  const [matchWinner, setMatchWinner] = useState<1 | 2 | null>(null);
+  const [forceCelebration, setForceCelebration] = useState(false);
 
   const { getNextPoint, checkGameWin, checkSetWin } = useTennisLogic();
   const scoringMode = match.scoringMode || tournament.scoringMode || ScoringMode.AMERICANO;
@@ -369,7 +374,14 @@ export default function MatchScorer({
       colors: ['#fa4615', '#8A9A5B', '#ffffff']
     });
 
-    onBack();
+    // Detect Grand Final
+    const isFinal = match.isPlayoff && !match.nextMatchId;
+    if (isFinal || forceCelebration) {
+      setMatchWinner(winner);
+      setShowChampionOverlay(true);
+    } else {
+      onBack();
+    }
   };
 
   const isTargetReached = (score1 + score2) >= pointsToPlayLocal;
@@ -381,133 +393,156 @@ export default function MatchScorer({
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }} 
-      className="w-full max-w-7xl mx-auto px-6 md:px-12 py-10"
-    >
-      <div className="space-y-8">
-        <div className="relative flex items-center justify-between">
-          <div className="flex-1 flex items-center gap-4">
-            <button onClick={onBack} className="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-all">
-              <ArrowLeft className="w-6 h-6 text-on-surface" />
-            </button>
-            {tournament.isKatapgama && (
-              <KatapgamaLogo className="w-12 h-12" />
-            )}
-          </div>
-          
-          <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
-            {scoringMode === ScoringMode.AMERICANO && (
-              <motion.div layout className={`px-8 py-3 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap transition-colors duration-500 ${isTargetReached ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-low text-on-surface'}`}>
-                {isTargetReached ? (
-                  <>
-                    <Trophy className="w-5 h-5" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.2em]">Target Reached</span>
-                  </>
-                ) : (
-                  <span className="text-[11px] font-bold uppercase tracking-[0.2em]">Target: {pointsToPlayLocal}</span>
-                )}
-              </motion.div>
-            )}
-            {scoringMode === ScoringMode.TENNIS && (
-              <motion.div layout className="px-8 py-3 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap bg-surface-container-low text-on-surface">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em]">
-                  {isTiebreak ? 'Tie-break' : `${setsToPlayLocal === 1 ? '1 Set' : `Best of ${setsToPlayLocal}`} | ${gamesPerSetLocal} Games`}
-                </span>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="flex-1 flex justify-end items-center gap-4">
-            <div className="flex bg-surface-container-low p-1 rounded-2xl">
-              <button onClick={undo} disabled={history.length === 0} className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface"><Undo2 className="w-5 h-5" /></button>
-              <button onClick={redo} disabled={redoStack.length === 0} className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface"><Redo2 className="w-5 h-5" /></button>
-            </div>
-            <button onClick={save} className="flex items-center gap-3 bg-surface-container-low text-on-surface px-8 py-4 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all">
-              <Save className="w-5 h-5" />
-              <span>Save</span>
-            </button>
-            <button 
-              onClick={resetMatch} 
-              className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-surface-container-low hover:bg-on-surface/5 transition-all text-on-surface/40 hover:text-on-surface font-black uppercase tracking-[0.2em] text-[10px]"
-            >
-              <RotateCcw className="w-5 h-5 flex-shrink-0" strokeWidth={3} />
-              <span>Reset Match</span>
-            </button>
-          </div>
-        </div>
-
-        {presenceUsers.length > 1 && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center shadow-inner">
-                <AlertTriangle className="w-6 h-6 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-lg font-black text-on-surface">Collaboration Mode</p>
-                <p className="text-sm font-bold text-on-surface/40 leading-tight">Multiple users are currently scoring this match.</p>
-              </div>
-            </div>
-
-            <div className="flex -space-x-4">
-              {presenceUsers.map((u, i) => (
-                <div 
-                  key={u.id} 
-                  className="group relative"
-                  style={{ zIndex: presenceUsers.length - i }}
-                >
-                  {u.photoURL ? (
-                    <img 
-                      src={u.photoURL} 
-                      alt={u.displayName} 
-                      className="w-14 h-14 rounded-2xl border-4 border-surface shadow-xl hover:-translate-y-1 transition-transform cursor-help"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-2xl border-4 border-surface bg-primary-container text-on-primary-container flex items-center justify-center font-black text-lg shadow-xl hover:-translate-y-1 transition-transform cursor-help">
-                      {u.displayName[0]}
-                    </div>
-                  )}
-                  <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-4 py-2 bg-on-surface text-surface text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-2xl">
-                    {u.displayName} {u.userId === user?.uid ? '(You)' : ''}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Full-width Court */}
-        <div className="w-full">
-          <PadelCourt 
-            team1={match.team1} team2={match.team2} 
-            serverIndex={serverIndex}
-            team1Name={getTeamName(match.team1)}
-            team2Name={getTeamName(match.team2)}
-            score1={score1} score2={score2}
-            points1={points1} points2={points2}
-            isTiebreak={isTiebreak}
-            scoringMode={scoringMode}
-            onScoreUpdate={handleScore}
-            onScoreSet={handleScoreSet}
-            onServerChange={handleServerChange}
-            pointsToPlay={pointsToPlayLocal}
+    <>
+      <AnimatePresence>
+        {showChampionOverlay && matchWinner && (
+          <ChampionOverlay 
+            teamName={getTeamName(matchWinner === 1 ? match.team1 : match.team2)}
+            players={matchWinner === 1 ? match.team1 : match.team2}
+            onContinue={onBack}
           />
-        </div>
+        )}
+      </AnimatePresence>
 
-        {/* Controls & History in Next Row */}
-        <div className="flex flex-col items-center justify-center pt-4">
-          <div className="w-full max-w-md">
-            <button 
-              onClick={complete} 
-              className="w-full bg-[#fa4615] text-white py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#fa4615]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Confirm Match Result
-            </button>
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        className="w-full max-w-7xl mx-auto px-6 md:px-12 py-10"
+      >
+        <div className="space-y-8">
+          <div className="relative flex items-center justify-between">
+            <div className="flex-1 flex items-center gap-4">
+              <button onClick={onBack} className="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-all">
+                <ArrowLeft className="w-6 h-6 text-on-surface" />
+              </button>
+              {tournament.isKatapgama && (
+                <KatapgamaLogo className="w-12 h-12" />
+              )}
+            </div>
+            
+            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+              {scoringMode === ScoringMode.AMERICANO && (
+                <motion.div layout className={`px-8 py-3 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap transition-colors duration-500 ${isTargetReached ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-low text-on-surface'}`}>
+                  {isTargetReached ? (
+                    <>
+                      <Trophy className="w-5 h-5" />
+                      <span className="text-[11px] font-bold uppercase tracking-[0.2em]">Target Reached</span>
+                    </>
+                  ) : (
+                    <span className="text-[11px] font-bold uppercase tracking-[0.2em]">Target: {pointsToPlayLocal}</span>
+                  )}
+                </motion.div>
+              )}
+              {scoringMode === ScoringMode.TENNIS && (
+                <motion.div layout className="px-8 py-3 rounded-full shadow-lg flex items-center gap-3 whitespace-nowrap bg-surface-container-low text-on-surface">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em]">
+                    {isTiebreak ? 'Tie-break' : `${setsToPlayLocal === 1 ? '1 Set' : `Best of ${setsToPlayLocal}`} | ${gamesPerSetLocal} Games`}
+                  </span>
+                </motion.div>
+              )}
+            </div>
+
+            <div className="flex-1 flex justify-end items-center gap-4">
+              <div className="flex bg-surface-container-low p-1 rounded-2xl">
+                <button onClick={undo} disabled={history.length === 0} className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface"><Undo2 className="w-5 h-5" /></button>
+                <button onClick={redo} disabled={redoStack.length === 0} className="p-3 rounded-xl hover:bg-surface-container-lowest disabled:opacity-20 transition-all text-on-surface"><Redo2 className="w-5 h-5" /></button>
+              </div>
+              <div className="flex bg-surface-container-low p-1 rounded-2xl">
+              <button 
+                onClick={() => setForceCelebration(!forceCelebration)} 
+                className={`p-3 rounded-xl transition-all flex items-center gap-2 ${forceCelebration ? 'bg-[#fa4615] text-white shadow-lg shadow-[#fa4615]/20' : 'hover:bg-surface-container-lowest text-on-surface/40'}`}
+                title="Force Champion Ceremony"
+              >
+                <PartyPopper className={`w-5 h-5 ${forceCelebration ? 'animate-bounce' : ''}`} />
+                {forceCelebration && <span className="text-[10px] font-black uppercase tracking-widest pr-1">Ceremony On</span>}
+              </button>
+            </div>
+            
+            <button onClick={save} className="flex items-center gap-3 bg-surface-container-low text-on-surface px-8 py-4 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all">
+                <Save className="w-5 h-5" />
+                <span>Save</span>
+              </button>
+              <button 
+                onClick={resetMatch} 
+                className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-surface-container-low hover:bg-on-surface/5 transition-all text-on-surface/40 hover:text-on-surface font-black uppercase tracking-[0.2em] text-[10px]"
+              >
+                <RotateCcw className="w-5 h-5 flex-shrink-0" strokeWidth={3} />
+                <span>Reset Match</span>
+              </button>
+            </div>
+          </div>
+
+          {presenceUsers.length > 1 && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center shadow-inner">
+                  <AlertTriangle className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-black text-on-surface">Collaboration Mode</p>
+                  <p className="text-sm font-bold text-on-surface/40 leading-tight">Multiple users are currently scoring this match.</p>
+                </div>
+              </div>
+
+              <div className="flex -space-x-4">
+                {presenceUsers.map((u, i) => (
+                  <div 
+                    key={u.id} 
+                    className="group relative"
+                    style={{ zIndex: presenceUsers.length - i }}
+                  >
+                    {u.photoURL ? (
+                      <img 
+                        src={u.photoURL} 
+                        alt={u.displayName} 
+                        className="w-14 h-14 rounded-2xl border-4 border-surface shadow-xl hover:-translate-y-1 transition-transform cursor-help"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl border-4 border-surface bg-primary-container text-on-primary-container flex items-center justify-center font-black text-lg shadow-xl hover:-translate-y-1 transition-transform cursor-help">
+                        {u.displayName[0]}
+                      </div>
+                    )}
+                    <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-4 py-2 bg-on-surface text-surface text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-2xl">
+                      {u.displayName} {u.userId === user?.uid ? '(You)' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Full-width Court */}
+          <div className="w-full">
+            <PadelCourt 
+              team1={match.team1} team2={match.team2} 
+              serverIndex={serverIndex}
+              team1Name={getTeamName(match.team1)}
+              team2Name={getTeamName(match.team2)}
+              score1={score1} score2={score2}
+              points1={points1} points2={points2}
+              isTiebreak={isTiebreak}
+              scoringMode={scoringMode}
+              onScoreUpdate={handleScore}
+              onScoreSet={handleScoreSet}
+              onServerChange={handleServerChange}
+              pointsToPlay={pointsToPlayLocal}
+            />
+          </div>
+
+          {/* Controls & History in Next Row */}
+          <div className="flex flex-col items-center justify-center pt-4">
+            <div className="w-full max-w-md">
+              <button 
+                onClick={complete} 
+                className="w-full bg-[#fa4615] text-white py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#fa4615]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                Confirm Match Result
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
