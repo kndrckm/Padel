@@ -251,6 +251,145 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
     }
   };
 
+  const runLifecycleAudit = async () => {
+    setIsProcessing(true);
+    setStatus('🚀 Initializing Lifecycle Audit...');
+
+    const katapgamaPlayers = [];
+    KATAPGAMA_TEAMS.forEach(t => {
+      katapgamaPlayers.push({ name: t.name, gender: 'man', teamName: t.teamName });
+      katapgamaPlayers.push({ name: t.partner, gender: 'man', teamName: t.teamName });
+    });
+
+    try {
+      // 1. CREATE TOURNAMENT
+      setStatus('Creating Test Tournament...');
+      const tournamentId = await createTournament(
+        user.uid,
+        `LIFECYCLE-AUDIT-${new Date().getTime()}`,
+        GameMode.KATAPGAMA_FUN_PADEL,
+        katapgamaPlayers,
+        2, 16, ScoringMode.AMERICANO, 
+        2, 1, 8, 'single', 
+        GameMode.TEAM_MEXICANO, GameMode.SINGLE_ELIMINATION
+      );
+
+      const getSnapshot = async (id: string) => {
+        const mSnap = await getDocs(collection(db, `tournaments/${id}/matches`));
+        return mSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+      };
+
+      const calculateAuditLeaderboard = (matchesList: Match[], tData: any) => {
+        const stats: Record<string, any> = {};
+        tData.players.forEach((p: any) => {
+          const name = p.teamName || p.name;
+          if (!stats[name]) stats[name] = { 
+            name, wins: 0, gamesWon: 0, gamesLost: 0, diff: 0, totalPoints: 0, matchedWith: [] 
+          };
+        });
+
+        matchesList.filter(m => m.status === MatchStatus.COMPLETED).forEach(m => {
+          const resolveTeam = (pNames: string[]) => {
+            const p = tData.players.find((p: any) => p.name === pNames[0]);
+            return p?.teamName || pNames[0];
+          };
+          const t1 = resolveTeam(m.team1);
+          const t2 = resolveTeam(m.team2);
+
+          stats[t1].matchedWith.push(t2);
+          stats[t2].matchedWith.push(t1);
+          stats[t1].gamesWon += m.score1;
+          stats[t1].gamesLost += m.score2;
+          stats[t2].gamesWon += m.score2;
+          stats[t2].gamesLost += m.score1;
+          stats[t1].diff = stats[t1].gamesWon - stats[t1].gamesLost;
+          stats[t2].diff = stats[t2].gamesWon - stats[t2].gamesLost;
+
+          if (m.winner === 1) stats[t1].wins++;
+          else if (m.winner === 2) stats[t2].wins++;
+        });
+
+        return Object.values(stats).sort((a: any, b: any) => 
+          (b.gamesWon - a.gamesWon) || (b.diff - a.diff) || (b.wins - a.wins)
+        );
+      };
+
+      // 2. RANDOMIZE STAGE 1
+      setStatus('Simulating Stage 1...');
+      const s1Matches = await getSnapshot(tournamentId);
+      const batch1 = writeBatch(db);
+      s1Matches.forEach(m => {
+        const s1 = Math.floor(Math.random() * 17);
+        const s2 = 16 - s1;
+        batch1.update(doc(db, `tournaments/${tournamentId}/matches/${m.id}`), {
+          score1: s1, score2: s2, status: MatchStatus.COMPLETED, winner: s1 > s2 ? 1 : (s1 < s2 ? 2 : undefined)
+        });
+      });
+      await batch1.commit();
+
+      // 3. SNAPSHOT S1
+      const updatedS1 = await getSnapshot(tournamentId);
+      const snapshotS1 = calculateAuditLeaderboard(updatedS1, { players: katapgamaPlayers });
+
+      // 4. GENERATE STAGE 2
+      setStatus('Generating Stage 2 Pairings...');
+      const nextStageMatches = generateNextStageMatches(
+        { id: tournamentId, isKatapgama: true, mode: GameMode.KATAPGAMA_FUN_PADEL, players: katapgamaPlayers, currentStage: 1, courtsCount: 2 },
+        updatedS1,
+        snapshotS1
+      );
+
+      const batchGen = writeBatch(db);
+      for (const mData of nextStageMatches) {
+        const mRef = doc(collection(db, `tournaments/${tournamentId}/matches`));
+        batchGen.set(mRef, { ...mData, tournamentId, status: MatchStatus.PENDING, score1: 0, score2: 0, sets1: [], sets2: [] });
+      }
+      await batchGen.commit();
+      await updateDoc(doc(db, `tournaments`, tournamentId), { currentStage: 2 });
+
+      // 5. RANDOMIZE STAGE 2
+      setStatus('Simulating Stage 2...');
+      const s2Matches = (await getSnapshot(tournamentId)).filter(m => m.stage === 2);
+      const batch2 = writeBatch(db);
+      s2Matches.forEach(m => {
+        const s1 = Math.floor(Math.random() * 17);
+        const s2 = 16 - s1;
+        batch2.update(doc(db, `tournaments/${tournamentId}/matches/${m.id}`), {
+          score1: s1, score2: s2, status: MatchStatus.COMPLETED, winner: s1 > s2 ? 1 : (s1 < s2 ? 2 : undefined)
+        });
+      });
+      await batch2.commit();
+
+      // 6. FINAL SNAPSHOT
+      const finalMatches = await getSnapshot(tournamentId);
+      const snapshotFinal = calculateAuditLeaderboard(finalMatches, { players: katapgamaPlayers });
+
+      // 7. EXPORT
+      const result = {
+        tournamentId,
+        timestamp: new Date().toISOString(),
+        stage1Leaderboard: snapshotS1,
+        finalLeaderboard: snapshotFinal,
+        allMatches: finalMatches
+      };
+
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `full_lifecycle_audit_${tournamentId}.json`;
+      a.click();
+
+      setStatus('✅ Lifecycle Audit Complete!');
+      setTimeout(() => setStatus(null), 3000);
+    } catch (error) {
+      console.error(error);
+      setStatus('❌ Audit Failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const autoAdvance = async () => {
     // Hidden logic as per previous instruction
     setIsProcessing(false);
@@ -329,6 +468,23 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
                       <p className="text-xs font-medium opacity-40">Verify fairness & pairings</p>
                     </div>
                   </div>
+                </button>
+
+                <button 
+                  disabled={isProcessing}
+                  onClick={runLifecycleAudit}
+                  className="w-full group bg-amber-500/10 hover:bg-amber-500 hover:text-white p-6 rounded-3xl flex items-center justify-between transition-all disabled:opacity-50 shadow-lg shadow-amber-500/10"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center group-hover:bg-white/20">
+                      <Zap className="w-6 h-6 text-amber-500 group-hover:text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-lg">Full Lifecycle Audit</p>
+                      <p className="text-xs font-medium opacity-40">Complete test: Create -> S1 -> S2 -> Results</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all" />
                 </button>
 
                 {currentTournament && (

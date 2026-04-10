@@ -226,9 +226,15 @@ export function generateNextStageMatches(
       (tournament.mode === GameMode.TEAM_MEXICANO && currentStage >= 1) ||
       (tournament.mode === GameMode.KATAPGAMA_FUN_PADEL && currentStage === 1)) {
     const playedPairs = new Set<string>();
-    matches.forEach(m => {
-      playedPairs.add([...m.team1].sort().join(','));
-      playedPairs.add([...m.team2].sort().join(','));
+    matches.filter(m => !m.deleted).forEach(m => {
+      if (m.logicId && m.logicId.includes('|')) {
+        const [t1, t2] = m.logicId.split('|');
+        playedPairs.add([t1, t2].sort().join(' vs '));
+      } else {
+        const p1 = [...m.team1].sort().join(' & ');
+        const p2 = [...m.team2].sort().join(' & ');
+        playedPairs.add([p1, p2].sort().join(' vs '));
+      }
     });
 
     const isTeamMode = tournament.isKatapgama || tournament.mode.includes('Team');
