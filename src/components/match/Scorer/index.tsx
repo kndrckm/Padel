@@ -512,6 +512,60 @@ export default function MatchScorer({
             </motion.div>
           )}
 
+          {/* Scoreboard */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-surface-container-low/50 backdrop-blur-xl rounded-[2.5rem] p-8 border border-on-surface/5 shadow-2xl"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 divide-y md:divide-y-0 md:divide-x divide-on-surface/5">
+              {[1, 2].map((tNum) => (
+                <div key={tNum} className={`flex items-center justify-between ${tNum === 2 ? 'md:pl-8' : 'md:pr-8'}`}>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-1.5 h-12 rounded-full ${tNum === 1 ? 'bg-primary' : 'bg-surface-container-high'}`} />
+                    <div className="flex flex-col truncate max-w-[200px]">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#8A9A5B] mb-1">
+                        {getTeamName(tNum === 1 ? match.team1 : match.team2) || `Team ${tNum}`}
+                      </span>
+                      <span className="text-xl font-black text-on-surface italic uppercase truncate">
+                        {(tNum === 1 ? match.team1 : match.team2).join(' & ')}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    {/* Previous Sets */}
+                    <div className="flex gap-2">
+                      {(tNum === 1 ? sets1 : sets2).map((s, i) => (
+                        <div key={i} className="group relative">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center border border-on-surface/5">
+                            <input 
+                              type="number" 
+                              value={s}
+                              onChange={(e) => handleSetScoreChange(tNum as 1 | 2, i, e.target.value)}
+                              className="w-full h-full bg-transparent text-center text-sm font-black text-on-surface/40 focus:text-primary outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                          </div>
+                          <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[8px] font-black text-on-surface/20 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Set {i+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Current Game Score */}
+                    <div className="relative group">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/20 shadow-lg shadow-primary/5">
+                        <span className="text-2xl font-black text-primary tabular-nums">
+                          {tNum === 1 ? score1 : score2}
+                        </span>
+                      </div>
+                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[8px] font-black text-primary/40 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Games</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
           {/* Full-width Court */}
           <div className="w-full">
             <PadelCourt 
@@ -531,7 +585,7 @@ export default function MatchScorer({
           </div>
 
           {/* Controls & History in Next Row */}
-          <div className="flex flex-col items-center justify-center pt-4">
+          <div className="flex justify-center pt-4">
             <div className="w-full max-w-md">
               <button 
                 onClick={complete} 
