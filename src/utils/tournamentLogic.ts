@@ -223,7 +223,8 @@ export function generateNextStageMatches(
 
   if (tournament.mode === GameMode.SUPER_MEXICANO || 
       (tournament.mode === GameMode.MEXICANO && currentStage >= 1) || 
-      (tournament.mode === GameMode.TEAM_MEXICANO && currentStage >= 1)) {
+      (tournament.mode === GameMode.TEAM_MEXICANO && currentStage >= 1) ||
+      (tournament.mode === GameMode.KATAPGAMA_FUN_PADEL && currentStage === 1)) {
     const playedPairs = new Set<string>();
     matches.forEach(m => {
       playedPairs.add([...m.team1].sort().join(','));
@@ -675,24 +676,6 @@ export function generateKatapgamaQualifier(players: Player[], courtsCount: numbe
       team1: shuffledTeams[i * 2],
       team2: shuffledTeams[i * 2 + 1],
       stage: 1,
-      court: (i % courtsCount) + 1,
-      status: MatchStatus.PENDING,
-      score1: 0, score2: 0, sets1: [], sets2: []
-    });
-  }
-
-  // Round 2 (8 matches) - Everyone plays their second match
-  // Strategy to avoid repeat opponents
-  const round2Pairs = [
-    [0, 2], [4, 6], [8, 10], [12, 14],
-    [1, 3], [5, 7], [9, 11], [13, 15]
-  ];
-
-  for (let i = 0; i < round2Pairs.length; i++) {
-    matches.push({
-      team1: shuffledTeams[round2Pairs[i][0]],
-      team2: shuffledTeams[round2Pairs[i][1]],
-      stage: 2,
       court: (i % courtsCount) + 1,
       status: MatchStatus.PENDING,
       score1: 0, score2: 0, sets1: [], sets2: []

@@ -111,7 +111,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
       setPointsToPlay(16);
       setCustomMatchCount(2);
       setPlayoffTeams(8);
-      setQualifierMode(GameMode.TEAM_AMERICANO);
+      setQualifierMode(GameMode.TEAM_MEXICANO);
       setPlayoffMode(GameMode.SINGLE_ELIMINATION);
       
       // Ensure 16 teams (32 players)

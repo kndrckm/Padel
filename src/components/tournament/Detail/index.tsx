@@ -54,7 +54,8 @@ export default function TournamentDetail({
     GameMode.TEAM_MEXICANO,
     GameMode.MIXED_MEXICANO,
     GameMode.NORMAL_AMERICANO,
-    GameMode.MIX_AMERICANO
+    GameMode.MIX_AMERICANO,
+    GameMode.KATAPGAMA_FUN_PADEL
   ].includes(tournament.mode);
 
   const isAmericanoVariant = [
@@ -256,8 +257,8 @@ export default function TournamentDetail({
     const currentStage = tournament.currentStage || 1;
     const nextStage = currentStage + 1;
     
-    // For Mixed mode, we need to pass the qualifierMode as the mode for logic
-    const logicTournament = isMixedMode ? { ...tournament, mode: tournament.qualifierMode as GameMode } : tournament;
+    // For Mixed or Katapgama mode, we need to pass the qualifierMode as the mode for logic
+    const logicTournament = (isMixedMode || tournament.mode === GameMode.KATAPGAMA_FUN_PADEL) ? { ...tournament, mode: tournament.qualifierMode as GameMode } : tournament;
     const matchPairs = generateNextStageMatches(logicTournament, matches, leaderboard);
     
     try {
