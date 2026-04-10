@@ -303,9 +303,6 @@ export default function TournamentDetail({
         }
       }
       
-        }
-      }
-      
       await onUpdate({ currentStage: nextStage });
       setShuffleMatches(matchPairs as Match[]);
       setIsShuffling(true);
