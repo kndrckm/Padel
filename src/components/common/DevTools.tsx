@@ -99,18 +99,122 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
     }
   };
 
-  const autoAdvance = async () => {
-    if (!currentTournament || !matches.length) return;
+  const generateAuditReport = async () => {
     setIsProcessing(true);
-    setStatus('Generating Stage 2...');
+    setStatus('Generating Audit Report...');
 
-    // We need to calculate the leaderboard first
-    // In a real script, we'd calculate it, but here we can just wait for the component to provide it
-    // Actually, we can just trigger the same logic as the button in TournamentDetail
-    // For this dev tool, we'll assume the user is on the page and can see the button, 
-    // OR we can trigger it here if we have the leaderboard.
-    setStatus('Please use the "Next Stage" button in the UI for now, or I can implement the full leaderboard calc if needed.');
-    setTimeout(() => setStatus(null), 3000);
+    try {
+      const tQuery = query(collection(db, 'tournaments'), where('creatorId', '==', user.uid));
+      const tSnap = await getDocs(tQuery);
+      const testTournaments = tSnap.docs.filter(d => d.data().name.includes('TEST'));
+      
+      const report: any[] = [];
+
+      for (const tDoc of testTournaments) {
+        const tData = tDoc.data();
+        const mSnap = await getDocs(collection(db, `tournaments/${tDoc.id}/matches`));
+        const tMatches = mSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
+        
+        // 1. Calculate Leaderboard after Stage 1 to verify Mexicano Logic
+        const stage1Matches = tMatches.filter(m => m.stage === 1 && !m.isPlayoff && m.status === MatchStatus.COMPLETED);
+        
+        const getStats = (matches: Match[]) => {
+          const stats: Record<string, any> = {};
+          tData.players.forEach((p: any) => {
+            const name = p.teamName || p.name;
+            if (!stats[name]) stats[name] = { name, wins: 0, gamesWon: 0, gamesLost: 0, totalPoints: 0, matchedWith: [] };
+          });
+
+          matches.forEach(m => {
+            const team1 = m.team1.join(' & ') || m.team1[0]; // handle team names vs player names
+            const team2 = m.team2.join(' & ') || m.team2[0];
+            
+            // For simple audit, use names directly if they exist
+            const t1Name = m.team1.length > 1 ? (tData.players.find((p: any) => p.name === m.team1[0])?.teamName || team1) : team1;
+            const t2Name = m.team2.length > 1 ? (tData.players.find((p: any) => p.name === m.team2[0])?.teamName || team2) : team2;
+
+            if (!stats[t1Name]) stats[t1Name] = { name: t1Name, wins: 0, gamesWon: 0, gamesLost: 0, totalPoints: 0, matchedWith: [] };
+            if (!stats[t2Name]) stats[t2Name] = { name: t2Name, wins: 0, gamesWon: 0, gamesLost: 0, totalPoints: 0, matchedWith: [] };
+
+            stats[t1Name].matchedWith.push(t2Name);
+            stats[t2Name].matchedWith.push(t1Name);
+            stats[t1Name].totalPoints += m.score1 || 0;
+            stats[t2Name].totalPoints += m.score2 || 0;
+            stats[t1Name].gamesWon += m.score1 || 0;
+            stats[t1Name].gamesLost += m.score2 || 0;
+            stats[t2Name].gamesWon += m.score2 || 0;
+            stats[t2Name].gamesLost += m.score1 || 0;
+
+            if (m.winner === 1) stats[t1Name].wins++;
+            if (m.winner === 2) stats[t2Name].wins++;
+          });
+
+          return Object.values(stats).sort((a: any, b: any) => {
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            const aDiff = a.gamesWon - a.gamesLost;
+            const bDiff = b.gamesWon - b.gamesLost;
+            if (bDiff !== aDiff) return bDiff - aDiff;
+            return b.totalPoints - a.totalPoints;
+          });
+        };
+
+        const leaderboardS1 = getStats(stage1Matches);
+        const stage2Matches = tMatches.filter(m => m.stage === 2 && !m.isPlayoff);
+        
+        const rankDeltas: string[] = [];
+        const repeats: string[] = [];
+
+        stage2Matches.forEach(m => {
+          const t1Name = m.team1.length > 1 ? (tData.players.find((p: any) => p.name === m.team1[0])?.teamName || m.team1[0]) : m.team1[0];
+          const t2Name = m.team2.length > 1 ? (tData.players.find((p: any) => p.name === m.team2[0])?.teamName || m.team2[0]) : m.team2[0];
+          
+          const r1 = leaderboardS1.findIndex(s => s.name === t1Name) + 1;
+          const r2 = leaderboardS1.findIndex(s => s.name === t2Name) + 1;
+          
+          if (r1 && r2) {
+            rankDeltas.push(`${t1Name} (#${r1}) vs ${t2Name} (#${r2}) - Delta: ${Math.abs(r1 - r2)}`);
+          }
+
+          // Check for repeat
+          const s1Opponent = leaderboardS1.find(s => s.name === t1Name)?.matchedWith[0];
+          if (s1Opponent === t2Name) {
+            repeats.push(`REPEAT: ${t1Name} vs ${t2Name} played in both stages!`);
+          }
+        });
+
+        report.push({
+          tournamentName: tData.name,
+          tournamentId: tDoc.id,
+          summary: {
+            totalMatches: tMatches.length,
+            repeatsFound: repeats.length,
+            avgMexicanoDelta: rankDeltas.length ? (rankDeltas.reduce((acc, d) => acc + parseInt(d.split('Delta: ')[1]), 0) / rankDeltas.length).toFixed(2) : 0
+          },
+          mexicanoAudit: rankDeltas,
+          repeatAudit: repeats,
+          leaderboardSnapshot: leaderboardS1
+        });
+      }
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `padel_audit_report_${new Date().toISOString()}.json`;
+      a.click();
+      
+      setStatus('Audit report downloaded!');
+      setTimeout(() => setStatus(null), 3000);
+    } catch (error) {
+      console.error(error);
+      setStatus('Error generating report');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const autoAdvance = async () => {
+    // Hidden logic as per previous instruction
     setIsProcessing(false);
   };
 
@@ -171,6 +275,22 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
                     </div>
                   </div>
                   <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all" />
+                </button>
+
+                <button 
+                  disabled={isProcessing}
+                  onClick={generateAuditReport}
+                  className="w-full group bg-primary-container/20 hover:bg-primary-container text-on-primary-container p-6 rounded-3xl flex items-center justify-between transition-all disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <Bug className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-lg">Audit & Export JSON</p>
+                      <p className="text-xs font-medium opacity-40">Verify fairness & pairings</p>
+                    </div>
+                  </div>
                 </button>
 
                 {currentTournament && (
