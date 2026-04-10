@@ -6,7 +6,8 @@ import {
   getDocs, 
   query, 
   orderBy,
-  updateDoc
+  updateDoc,
+  getDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { PredefinedPlayer, PredefinedTeam } from '../types';
@@ -93,6 +94,18 @@ export const deletePredefinedTeam = async (userId: string, teamId: string) => {
     await deleteDoc(doc(db, `users/${userId}/predefinedTeams`, teamId));
   } catch (error) {
     console.error('Error deleting team:', error);
+    throw error;
+  }
+};
+
+export const getKatapgamaTeams = async (userId: string) => {
+  if (!userId) return null;
+  try {
+    const docRef = doc(db, `users/${userId}/settings`, 'katapgama_pack');
+    const snapshot = await getDoc(docRef);
+    return snapshot.exists() ? snapshot.data() : null;
+  } catch (error) {
+    console.error('Error loading katapgama settings:', error);
     throw error;
   }
 };
