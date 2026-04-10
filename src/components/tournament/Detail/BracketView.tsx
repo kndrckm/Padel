@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import { Tournament, Match, MatchStatus, GameMode } from '../../../types';
 
@@ -7,6 +7,27 @@ interface BracketViewProps {
   tournament: Tournament;
   matches: Match[];
   onSelectMatch: (m: Match) => void;
+}
+
+function useWindowSize() {
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+
+  useEffect(() => {
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    }
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return windowSize;
 }
 
 export const BracketView = ({ tournament, matches, onSelectMatch }: BracketViewProps) => {
@@ -20,6 +41,13 @@ const SwissBracket = ({ tournament, matches, onSelectMatch }: BracketViewProps) 
   const maxStages = Math.ceil(Math.log2(tournament.players.length / 2)) + 1;
   const constraintsRef = useRef(null);
   const stages = Array.from({ length: maxStages }, (_, i) => i + 1);
+  const players = tournament.players;
+
+  const getTeamName = (playerNames: string[]) => {
+    if (!playerNames.length) return null;
+    const player = players.find(p => p.name === playerNames[0]);
+    return player?.teamName || null;
+  };
 
   const getRecordAtStage = (team: string[], stageLimit: number) => {
     let wins = 0;
@@ -41,13 +69,27 @@ const SwissBracket = ({ tournament, matches, onSelectMatch }: BracketViewProps) 
     return `${wins}-${losses}`;
   };
 
+  const { width: windowWidth } = useWindowSize();
+  const getScaleFactor = () => {
+    if (windowWidth < 768) return 0.65;
+    if (windowWidth < 1024) return 0.8;
+    return 1.0;
+  };
+  const SCALE = getScaleFactor();
+  const COLUMN_WIDTH = 320 * SCALE;
+  const COLUMN_GAP = 32 * SCALE;
+  
+  const totalWidth = stages.length * (COLUMN_WIDTH + COLUMN_GAP) - COLUMN_GAP;
+  const fitsInViewport = totalWidth < windowWidth - 48;
+
   return (
-    <div ref={constraintsRef} className="cursor-grab active:cursor-grabbing no-scrollbar -mx-6 px-6">
+    <div ref={constraintsRef} className={`cursor-grab active:cursor-grabbing no-scrollbar overflow-hidden w-full flex ${fitsInViewport ? 'justify-center' : 'justify-start px-6'}`}>
       <motion.div 
         drag="x" 
-        dragConstraints={constraintsRef}
+        dragConstraints={fitsInViewport ? { left: 0, right: 0 } : constraintsRef}
         dragElastic={0.05}
-        className="flex gap-8 pb-8 w-max"
+        className="flex pb-8 pt-4 w-max relative"
+        style={{ gap: `${COLUMN_GAP}px` }}
       >
       {stages.map(r => {
         const stageMatches = matches.filter(m => m.stage === r);
@@ -66,51 +108,79 @@ const SwissBracket = ({ tournament, matches, onSelectMatch }: BracketViewProps) 
         });
 
         return (
-          <div key={r} className="flex-shrink-0 w-80 space-y-8">
-            <div className="px-6 py-4 bg-surface-container-low rounded-2xl flex items-center justify-between border border-on-surface/5">
-              <h3 className="font-black text-on-surface/40 uppercase tracking-widest text-xs">Stage {r}</h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-on-surface/5 text-on-surface/30">
+          <div key={r} className="flex-shrink-0" style={{ width: COLUMN_WIDTH, gap: `${32 * SCALE}px`, display: 'flex', flexDirection: 'column' }}>
+            <div 
+              className="bg-surface-container-low rounded-2xl flex items-center justify-between border border-on-surface/5"
+              style={{ padding: `${16 * SCALE}px ${24 * SCALE}px` }}
+            >
+              <h3 className="font-black text-on-surface/40 uppercase tracking-widest" style={{ fontSize: `${12 * SCALE}px` }}>Stage {r}</h3>
+              <span 
+                className="font-bold rounded-md bg-on-surface/5 text-on-surface/30"
+                style={{ fontSize: `${10 * SCALE}px`, padding: `${2 * SCALE}px ${8 * SCALE}px` }}
+              >
                 {stageMatches.length} Matches
               </span>
             </div>
             
-            <div className="space-y-10">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: `${40 * SCALE}px` }}>
               {sortedRecords.map(record => (
-                <div key={record} className="space-y-4">
+                <div key={record} style={{ display: 'flex', flexDirection: 'column', gap: `${16 * SCALE}px` }}>
                   <div className="flex items-center gap-3 px-2">
                     <div className="h-px flex-1 bg-on-surface/5" />
-                    <span className="text-[10px] font-black text-on-surface/20 uppercase tracking-[0.2em]">{record} Group</span>
+                    <span className="font-black text-on-surface/20 uppercase tracking-[0.2em]" style={{ fontSize: `${10 * SCALE}px` }}>{record} Group</span>
                     <div className="h-px flex-1 bg-on-surface/5" />
                   </div>
                   
-                  <div className="space-y-3">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: `${12 * SCALE}px` }}>
                     {groups[record].filter(m => !m.team1.includes('BYE') && !m.team2.includes('BYE')).map(m => (
                       <motion.div
                         key={m.id}
                         whileHover={!m.isSkeleton ? { scale: 1.02, y: -2 } : {}}
                         onClick={() => !m.isSkeleton && onSelectMatch(m)}
-                        className={`bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-on-surface/5 transition-all text-sm ${m.isSkeleton ? 'opacity-40 grayscale cursor-default' : 'hover:shadow-xl hover:border-primary/20 cursor-pointer'}`}
+                        className={`bg-surface-container-lowest rounded-2xl shadow-sm border border-on-surface/5 transition-all ${m.isSkeleton ? 'opacity-40 grayscale cursor-default' : 'hover:shadow-xl hover:border-primary/20 cursor-pointer'}`}
+                        style={{ padding: `${20 * SCALE}px`, fontSize: `${14 * SCALE}px` }}
                       >
-                        <div className="space-y-3">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: `${12 * SCALE}px` }}>
                           <div className="flex items-center justify-between">
-                            <span className={`font-bold truncate max-w-[180px] ${m.status === MatchStatus.COMPLETED && m.winner === 1 ? 'text-primary' : 'text-on-surface/60'}`}>
-                              {m.team1.length > 0 ? m.team1.join(' & ') : "TBD"}
-                            </span>
+                            <div className="flex flex-col truncate max-w-[180px]">
+                              {getTeamName(m.team1) && (
+                                <span className="text-[8px] font-black uppercase tracking-widest text-[#8A9A5B] mb-0.5 leading-none">
+                                  {getTeamName(m.team1)}
+                                </span>
+                              )}
+                              <span className={`font-bold truncate ${m.status === MatchStatus.COMPLETED && m.winner === 1 ? 'text-primary' : 'text-on-surface/60'}`}>
+                                {m.team1.length > 0 ? m.team1.join(' & ') : "TBD"}
+                              </span>
+                            </div>
                             <span className="font-black text-lg">{m.score1}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className={`font-bold truncate max-w-[180px] ${m.status === MatchStatus.COMPLETED && m.winner === 2 ? 'text-primary' : 'text-on-surface/60'}`}>
-                              {m.team2.length > 0 ? m.team2.join(' & ') : "TBD"}
-                            </span>
+                            <div className="flex flex-col truncate max-w-[180px]">
+                              {getTeamName(m.team2) && (
+                                <span className="text-[8px] font-black uppercase tracking-widest text-[#8A9A5B] mb-0.5 leading-none">
+                                  {getTeamName(m.team2)}
+                                </span>
+                              )}
+                              <span className={`font-bold truncate ${m.status === MatchStatus.COMPLETED && m.winner === 2 ? 'text-primary' : 'text-on-surface/60'}`}>
+                                {m.team2.length > 0 ? m.team2.join(' & ') : "TBD"}
+                              </span>
+                            </div>
                             <span className="font-black text-lg">{m.score2}</span>
                           </div>
                         </div>
                         {m.status === MatchStatus.COMPLETED && (
-                          <div className="mt-3 pt-3 border-t border-on-surface/5 flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-on-surface/20 uppercase tracking-wider">Final Score</span>
+                          <div 
+                            className="border-t border-on-surface/5 flex items-center justify-between"
+                            style={{ marginTop: `${12 * SCALE}px`, paddingTop: `${12 * SCALE}px` }}
+                          >
+                            <span className="font-bold text-on-surface/20 uppercase tracking-wider" style={{ fontSize: `${10 * SCALE}px` }}>Final Score</span>
                             <div className="flex gap-1">
                               {m.sets1.map((s, i) => (
-                                <span key={i} className="text-[10px] font-bold w-5 h-5 rounded bg-on-surface/5 flex items-center justify-center text-on-surface/40">
+                                <span 
+                                  key={i} 
+                                  className="font-bold rounded bg-on-surface/5 flex items-center justify-center text-on-surface/40"
+                                  style={{ width: `${20 * SCALE}px`, height: `${20 * SCALE}px`, fontSize: `${10 * SCALE}px` }}
+                                >
                                   {s}
                                 </span>
                               ))}
@@ -134,6 +204,13 @@ const SwissBracket = ({ tournament, matches, onSelectMatch }: BracketViewProps) 
 const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewProps) => {
   const constraintsRef = useRef(null);
   const isDouble = tournament.mode === GameMode.DOUBLE_ELIMINATION;
+  const players = tournament.players;
+
+  const getTeamName = (playerNames: string[]) => {
+    if (!playerNames.length) return null;
+    const player = players.find(p => p.name === playerNames[0]);
+    return player?.teamName || null;
+  };
   
   const wbMatches = matches.filter(m => !m.isLosersBracket && !m.id?.startsWith('gf'));
   const lbMatches = matches.filter(m => m.isLosersBracket);
@@ -167,11 +244,21 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
   };
 
   const maxCols = isDouble ? (maxWBStage - 1) * 2 + 1 : maxWBStage - 1;
-  const MATCH_WIDTH = 280;
-  const MATCH_HEIGHT = 100;
-  const COLUMN_GAP = 100;
-  const ROW_GAP = 40;
-  const HEADER_OFFSET = 140; // pt-10 (40) + header height area (approx 100)
+  const { width: windowWidth } = useWindowSize();
+
+  // Responsive Scaling Factor
+  const getScaleFactor = () => {
+    if (windowWidth < 768) return 0.65; // Mobile
+    if (windowWidth < 1024) return 0.8; // Tablet
+    return 1.0; // Desktop
+  };
+
+  const SCALE = getScaleFactor();
+  const MATCH_WIDTH = 280 * SCALE;
+  const MATCH_HEIGHT = 100 * SCALE;
+  const COLUMN_GAP = 100 * SCALE;
+  const ROW_GAP = 40 * SCALE;
+  const HEADER_OFFSET = 140 * SCALE; 
 
   const getMatchPos = (m: Match) => {
     const isLB = m.isLosersBracket;
@@ -210,13 +297,14 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
   });
 
   const totalWidth = (maxCols + 1) * (MATCH_WIDTH + COLUMN_GAP);
-  const totalHeight = 1200; // Increased to accommodate LB
+  const totalHeight = 1200 * SCALE; // Increased to accommodate LB
+  const fitsInViewport = totalWidth < windowWidth - 48; // -48 for margins
 
   return (
-    <div ref={constraintsRef} className="cursor-grab active:cursor-grabbing no-scrollbar overflow-hidden">
+    <div ref={constraintsRef} className={`cursor-grab active:cursor-grabbing no-scrollbar overflow-hidden w-full flex ${fitsInViewport ? 'justify-center' : 'justify-start px-6'}`}>
       <motion.div 
         drag="x" 
-        dragConstraints={constraintsRef}
+        dragConstraints={fitsInViewport ? { left: 0, right: 0 } : constraintsRef}
         dragElastic={0.05}
         className="flex pb-20 pt-10 w-max relative"
         style={{ minHeight: totalHeight }}
@@ -247,7 +335,7 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
                 d={`M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth={2 * SCALE}
                 className={`${m.isSkeleton ? 'text-on-surface/5' : 'text-on-surface/10'}`}
                 strokeLinecap="round"
               />
@@ -267,7 +355,7 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
             <div key={colIndex} className="flex-shrink-0 relative" style={{ width: MATCH_WIDTH + COLUMN_GAP }}>
               <div className="px-6 mb-12">
                 <div className="px-4 py-2 bg-surface-container-low/80 backdrop-blur-md rounded-xl border border-on-surface/5 inline-block shadow-sm">
-                  <h3 className="font-black text-on-surface/40 uppercase tracking-[0.25em] text-[10px]">
+                  <h3 className="font-black text-on-surface/40 uppercase tracking-[0.25em]" style={{ fontSize: `${10 * SCALE}px` }}>
                     {getStageName(colIndex)}
                   </h3>
                 </div>
@@ -297,10 +385,19 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
                       <motion.div
                         whileHover={!m.isSkeleton ? { scale: 1.02, x: 4 } : {}}
                         onClick={() => !m.isSkeleton && onSelectMatch(m)}
-                        className={`relative z-10 bg-surface-container-lowest p-5 rounded-2xl shadow-md border-2 ${isGF ? 'border-primary/40' : 'border-on-surface/5'} transition-all w-full ${m.isSkeleton ? 'opacity-40 grayscale blur-[0.5px]' : 'hover:shadow-2xl hover:border-primary/30 cursor-pointer'}`}
+                        className={`relative z-10 bg-surface-container-lowest rounded-2xl shadow-md border-2 ${isGF ? 'border-primary/40' : 'border-on-surface/5'} transition-all w-full ${m.isSkeleton ? 'opacity-40 grayscale blur-[0.5px]' : 'hover:shadow-2xl hover:border-primary/30 cursor-pointer'}`}
+                        style={{ padding: `${20 * SCALE}px` }}
                       >
                         {isGF && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-on-primary text-[9px] font-black uppercase rounded-full tracking-[0.2em] shadow-lg">
+                          <div 
+                            className="absolute left-1/2 -translate-x-1/2 bg-primary text-on-primary font-black uppercase rounded-full shadow-lg whitespace-nowrap"
+                            style={{ 
+                              top: -12 * SCALE, 
+                              padding: `${4 * SCALE}px ${12 * SCALE}px`,
+                              fontSize: `${9 * SCALE}px`,
+                              letterSpacing: `${0.2 * SCALE}em`
+                            }}
+                          >
                             🏆 Grand Final {m.matchIndex === 1 ? 'Reset' : ''}
                           </div>
                         )}
@@ -309,17 +406,52 @@ const EliminationBracket = ({ tournament, matches, onSelectMatch }: BracketViewP
                             const team = tNum === 1 ? m.team1 : m.team2;
                             const score = tNum === 1 ? m.score1 : m.score2;
                             const isWinner = m.status === MatchStatus.COMPLETED && m.winner === tNum;
+                            const sets = tNum === 1 ? m.sets1 : m.sets2;
+                            const hasSets = sets && sets.length > 0;
+                            
                             return (
                               <div key={tNum} className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3 overflow-hidden flex-1">
-                                  <div className={`w-1 h-8 rounded-full ${isWinner ? 'bg-primary' : 'bg-on-surface/5'}`} />
-                                  <span className={`font-bold text-xs truncate ${isWinner ? 'text-primary' : 'text-on-surface/60'}`}>
-                                    {team.length > 0 ? team.join(' & ') : "TBD"}
-                                  </span>
-                                </div>
-                                <span className={`font-black text-base w-8 text-right tabular-nums ${isWinner ? 'text-primary' : 'text-on-surface/40'}`}>
-                                  {score}
-                                </span>
+                                  <div className="flex items-center gap-3 overflow-hidden flex-1">
+                                    <div 
+                                      className={`rounded-full ${isWinner ? 'bg-primary' : 'bg-on-surface/5'}`} 
+                                      style={{ width: `${4 * SCALE}px`, height: `${32 * SCALE}px` }}
+                                    />
+                                    <div className="flex flex-col truncate">
+                                      {getTeamName(team) && (
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-[#8A9A5B] mb-0.5 leading-none">
+                                          {getTeamName(team)}
+                                        </span>
+                                      )}
+                                      <span 
+                                        className={`font-bold truncate ${isWinner ? 'text-primary' : 'text-on-surface/60'}`}
+                                        style={{ fontSize: `${12 * SCALE}px` }}
+                                      >
+                                        {team.length > 0 ? team.join(' & ') : "TBD"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    {hasSets && (
+                                      <div className="flex gap-1.5 opacity-60">
+                                        {sets.map((s, idx) => (
+                                          <span 
+                                            key={idx}
+                                            className="font-bold tabular-nums"
+                                            style={{ fontSize: `${11 * SCALE}px`, width: `${14 * SCALE}px`, textAlign: 'center' }}
+                                          >
+                                            {s}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <span 
+                                      className={`font-black text-right tabular-nums ${isWinner ? 'text-primary' : 'text-on-surface/40'}`}
+                                      style={{ fontSize: `${16 * SCALE}px`, minWidth: `${24 * SCALE}px` }}
+                                    >
+                                      {score}
+                                    </span>
+                                  </div>
                               </div>
                             );
                           })}

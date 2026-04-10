@@ -8,16 +8,23 @@ import {
   ChevronRight, 
   CheckCircle, 
   Play,
-  Trophy
+  Trophy,
+  Settings,
+  Zap,
+  Activity
 } from 'lucide-react';
 import { doc, updateDoc, collection, addDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
-import { Tournament, Match, MatchStatus, GameMode, Player, PlayerStats, OperationType } from '../../../types';
+import { Tournament, Match, MatchStatus, GameMode, Player, PlayerStats, OperationType, ScoringMode } from '../../../types';
 import { handleFirestoreError } from '../../../lib/firestore';
 import { generateNextStageMatches } from '../../../utils/tournamentLogic';
 import { BracketView } from './BracketView';
 import { LeaderboardView } from './LeaderboardView';
 import { MatchesView } from './MatchesView';
+import { getAdvancingTeams, generatePlayoffMatches } from '../../../utils/promotionLogic';
+import { Shuffle, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
+import { SettingsModal } from './SettingsModal';
+
 
 interface TournamentDetailProps {
   tournament: Tournament;
@@ -63,10 +70,20 @@ export default function TournamentDetail({
     GameMode.DOUBLE_ELIMINATION
   ].includes(tournament.mode);
 
-  const defaultTab = isBracketMode ? 'bracket' : (isStageBasedMode ? (tournament.currentStage?.toString() || '1') : '1');
+  const isMixedMode = tournament.mode === GameMode.MIXED;
+
+
+  const defaultTab = isMixedMode 
+    ? (tournament.playoffStarted ? 'playoff' : '1') 
+    : (isBracketMode ? 'bracket' : (isStageBasedMode ? (tournament.currentStage?.toString() || '1') : '1'));
+
   const [tab, setTab] = useState<string>(defaultTab);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showShareTooltip, setShowShareTooltip] = useState(false);
+  const [advancingTeamsPreview, setAdvancingTeamsPreview] = useState<string[][] | null>(null);
+  const [isResetingPlayoff, setIsResetingPlayoff] = useState(false);
+
 
   const handleShare = () => {
     const url = `${window.location.origin}${window.location.pathname}?tournamentId=${tournament.id}`;
@@ -157,10 +174,12 @@ export default function TournamentDetail({
     const currentStage = tournament.currentStage || 1;
     const nextStage = currentStage + 1;
     
-    const matchPairs = generateNextStageMatches(tournament, matches, leaderboard);
+    // For Mixed mode, we need to pass the qualifierMode as the mode for logic
+    const logicTournament = isMixedMode ? { ...tournament, mode: tournament.qualifierMode as GameMode } : tournament;
+    const matchPairs = generateNextStageMatches(logicTournament, matches, leaderboard);
     
     try {
-      const skeletonMatches = matches.filter(m => m.stage === nextStage && m.isSkeleton);
+      const skeletonMatches = matches.filter(m => m.stage === nextStage && m.isSkeleton && !m.isPlayoff);
       if (skeletonMatches.length > 0) {
         for (let i = 0; i < Math.min(matchPairs.length, skeletonMatches.length); i++) {
           await updateDoc(doc(db, `tournaments/${tournament.id}/matches`, skeletonMatches[i].id!), {
@@ -171,12 +190,29 @@ export default function TournamentDetail({
           });
         }
       } else {
+        const settings = tournament.qualifierSettings || {
+          scoringMode: tournament.scoringMode || ScoringMode.AMERICANO,
+          pointsToPlay: tournament.pointsToPlay || 21,
+          setsToPlay: tournament.setsToPlay || 1,
+          gamesPerSet: tournament.gamesPerSet || 6,
+          useGoldenPoint: tournament.useGoldenPoint ?? true
+        };
+
         for (let i = 0; i < matchPairs.length; i++) {
           await addDoc(collection(db, `tournaments/${tournament.id}/matches`), {
             ...matchPairs[i],
             tournamentId: tournament.id,
             score1: 0, score2: 0, sets1: [], sets2: [],
-            status: MatchStatus.PENDING, isSkeleton: false
+            points1: settings.scoringMode === ScoringMode.TENNIS ? '0' : 0,
+            points2: settings.scoringMode === ScoringMode.TENNIS ? '0' : 0,
+            isTiebreak: false,
+            scoringMode: settings.scoringMode,
+            setsToPlay: settings.setsToPlay,
+            gamesPerSet: settings.gamesPerSet,
+            useGoldenPoint: settings.useGoldenPoint,
+            pointsToPlay: settings.pointsToPlay,
+            status: MatchStatus.PENDING, isSkeleton: false,
+            isPlayoff: false
           });
         }
       }
@@ -187,6 +223,79 @@ export default function TournamentDetail({
       handleFirestoreError(error, OperationType.UPDATE, `tournaments/${tournament.id}`);
     }
   };
+
+  const handleStartPlayoff = async () => {
+
+    if (!isCreator || !advancingTeamsPreview) return;
+    
+    try {
+      const playoffMatches = generatePlayoffMatches(
+        advancingTeamsPreview,
+        tournament.playoffMode as any,
+        tournament.courtsCount
+      );
+
+      const settings = tournament.playoffSettings || {
+        scoringMode: ScoringMode.TENNIS,
+        pointsToPlay: 21,
+        setsToPlay: 3,
+        gamesPerSet: 6,
+        useGoldenPoint: true
+      };
+
+      for (const m of playoffMatches) {
+        await addDoc(collection(db, `tournaments/${tournament.id}/matches`), {
+          ...m,
+          tournamentId: tournament.id,
+          isPlayoff: true,
+          scoringMode: settings.scoringMode,
+          setsToPlay: settings.setsToPlay,
+          gamesPerSet: settings.gamesPerSet,
+          useGoldenPoint: settings.useGoldenPoint,
+          pointsToPlay: settings.pointsToPlay,
+          points1: settings.scoringMode === ScoringMode.TENNIS ? '0' : 0,
+          points2: settings.scoringMode === ScoringMode.TENNIS ? '0' : 0,
+          isTiebreak: false
+        });
+      }
+
+      await onUpdate({ 
+        playoffStarted: true,
+        advancingTeams: advancingTeamsPreview.map(t => t.join(' & '))
+      });
+      setTab('playoff');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tournaments/${tournament.id}`);
+    }
+  };
+
+  const handleResetPlayoff = async () => {
+    if (!isCreator) return;
+    setIsResetingPlayoff(true);
+    try {
+      const playoffMatches = matches.filter(m => m.isPlayoff);
+      for (const m of playoffMatches) {
+        await setDoc(doc(db, `tournaments/${tournament.id}/matches`, m.id!), { ...m, deleted: true }, { merge: true });
+        // NOTE: In a real app we might delete them, but here we'll just filter them out or delete if service supports it
+        // For simplicity, I'll use a batch delete if I had it, but here I'll just clear the flag or delete the doc
+        // Actually, let's just delete the doc since it's a playoff reset
+        await updateDoc(doc(db, `tournaments/${tournament.id}/matches`, m.id!), { deleted: true });
+      }
+      await onUpdate({ playoffStarted: false, advancingTeams: [] });
+      setTab('1');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `tournaments/${tournament.id}/playoff`);
+    } finally {
+      setIsResetingPlayoff(false);
+    }
+  };
+
+  const shuffleAdvancingTeams = () => {
+    if (!advancingTeamsPreview) return;
+    const shuffled = [...advancingTeamsPreview].sort(() => Math.random() - 0.5);
+    setAdvancingTeamsPreview(shuffled);
+  };
+
 
   const matchesPerStage = useMemo(() => {
     const stage1Count = matches.filter(m => m.stage === 1).length;
@@ -230,11 +339,13 @@ export default function TournamentDetail({
             <div>
               <h2 className="text-4xl md:text-5xl font-bold text-on-surface tracking-tight mb-3">{tournament.name}</h2>
               <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-on-surface/40">
-                <span className="px-3 py-1 rounded-xl bg-surface-container-low text-on-surface/60">{tournament.mode}</span>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-xl bg-surface-container-low text-on-surface/60 font-black uppercase tracking-widest text-[10px]">{tournament.mode}</span>
+                </div>
                 <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
                 <span>{tournament.players.length} Players</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
-                {!isBracketMode ? (
+                {!isBracketMode && !isMixedMode ? (
                   <>
                     <span>Stage {tab} of {maxPossibleStages !== Infinity ? maxPossibleStages : (tournament.numberOfMatches ?? '?')}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
@@ -248,11 +359,28 @@ export default function TournamentDetail({
                 <span>{tournament.courtsCount} Courts</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
                 <span>{tournament.pointsToPlay} Points</span>
+                {isMixedMode && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-on-surface/10" />
+                    <span className="text-primary font-bold">Mixed: {tournament.qualifierMode} → {tournament.playoffMode}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {isMixedMode && tournament.playoffStarted && isCreator && (
+              <button 
+                onClick={handleResetPlayoff} 
+                disabled={isResetingPlayoff}
+                className="flex items-center gap-2 px-6 py-4 rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-all font-bold"
+              >
+                <RefreshCw className={`w-5 h-5 ${isResetingPlayoff ? 'animate-spin' : ''}`} />
+                Reset Playoff
+              </button>
+            )}
             <div className="relative">
+
               <button onClick={handleShare} className="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all text-on-surface/60 hover:text-on-surface">
                 <Share2 className="w-6 h-6" />
               </button>
@@ -265,9 +393,14 @@ export default function TournamentDetail({
               </AnimatePresence>
             </div>
             {isCreator && (
-              <button onClick={() => setShowDeleteConfirm(true)} className="p-4 rounded-xl bg-surface-container-low hover:bg-red-500/10 transition-all text-on-surface/60 hover:text-red-500">
-                <Trash2 className="w-6 h-6" />
-              </button>
+              <>
+                <button onClick={() => setShowSettings(true)} className="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all text-on-surface/60 hover:text-on-surface">
+                  <Settings className="w-6 h-6" />
+                </button>
+                <button onClick={() => setShowDeleteConfirm(true)} className="p-4 rounded-xl bg-surface-container-low hover:bg-red-500/10 transition-all text-on-surface/60 hover:text-red-500">
+                  <Trash2 className="w-6 h-6" />
+                </button>
+              </>
             )}
             {canGenerateNextStage && (
               <button onClick={generateNextStage} className="bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
@@ -280,23 +413,97 @@ export default function TournamentDetail({
 
       <div className="w-full max-w-7xl mx-auto px-6 md:px-12 mb-12">
         <div className="flex bg-surface-container-low p-1.5 rounded-2xl w-fit overflow-x-auto max-w-full no-scrollbar">
-          {!isBracketMode && Array.from({ length: maxStage }, (_, i) => (i + 1).toString()).map(s => (
+          {(isStageBasedMode || isMixedMode) && Array.from({ length: maxStage }, (_, i) => (i + 1).toString()).map(s => (
             <button key={s} onClick={() => setTab(s)} className={`px-8 py-3.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${tab === s ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>
-              Stage {s}
+              {isMixedMode && s === "1" && maxStage === 1 ? 'Qualifier' : `Stage ${s}`}
             </button>
           ))}
-          {isBracketMode && <button onClick={() => setTab('bracket')} className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'bracket' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>Bracket</button>}
+          {isBracketMode && !isMixedMode && <button onClick={() => setTab('bracket')} className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'bracket' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>Bracket</button>}
+          {isMixedMode && <button onClick={() => setTab('playoff')} className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'playoff' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>Playoff</button>}
           {<button onClick={() => setTab('leaderboard')} className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'leaderboard' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>Leaderboard</button>}
         </div>
       </div>
 
+
       {tab === 'bracket' ? (
-        <div className="w-full"><BracketView tournament={tournament} matches={matches} onSelectMatch={onSelectMatch} /></div>
+        <div className="w-full"><BracketView tournament={tournament} matches={matches.filter(m => !m.isPlayoff)} onSelectMatch={onSelectMatch} /></div>
+      ) : tab === 'playoff' ? (
+        <div className="w-full">
+          {tournament.playoffStarted ? (
+            <BracketView tournament={{ ...tournament, mode: tournament.playoffMode as GameMode }} matches={matches.filter(m => m.isPlayoff && !m.deleted)} onSelectMatch={onSelectMatch} />
+          ) : (
+            <div className="max-w-4xl mx-auto px-6 py-12">
+              <div className="bg-surface-container-low rounded-3xl p-10 border border-on-surface/5">
+                <div className="flex items-center gap-6 mb-10">
+                  <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <Trophy className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-on-surface mb-1">Playoff Promotion</h3>
+                    <p className="text-on-surface/40">Review advancing teams from {tournament.qualifierMode} qualifier stage</p>
+                  </div>
+                </div>
+
+                {!advancingTeamsPreview ? (
+                  <div className="text-center py-20 bg-surface-container-lowest rounded-2xl border-2 border-dashed border-on-surface/5">
+                    <AlertTriangle className="w-12 h-12 text-on-surface/20 mx-auto mb-6" />
+                    <p className="text-on-surface/40 font-medium mb-8">Ready to transition to playoffs?</p>
+                    <button 
+                      onClick={() => setAdvancingTeamsPreview(getAdvancingTeams(leaderboard, tournament.advancingTeamsCount || 8, tournament.qualifierMode === GameMode.NORMAL_AMERICANO || tournament.qualifierMode === GameMode.MEXICANO || tournament.qualifierMode === GameMode.MIX_AMERICANO))}
+                      className="bg-primary text-on-primary px-10 py-4 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
+                    >
+                      Process Advancing Teams
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {advancingTeamsPreview.map((team, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-5 bg-surface-container-lowest rounded-2xl border border-on-surface/5">
+                          <div className="flex items-center gap-4">
+                            <span className="w-10 h-10 bg-on-surface/5 flex items-center justify-center rounded-xl font-black text-on-surface/20">{idx + 1}</span>
+                            <span className="font-bold text-on-surface">{team.join(' & ')}</span>
+                          </div>
+                          {idx < (tournament.advancingTeamsCount || 8) / 2 && (
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-lg">High Seed</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 pt-6 border-t border-on-surface/5">
+                      <button 
+                        onClick={handleStartPlayoff}
+                        className="flex-1 bg-primary text-on-primary py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        Generate Playoff Bracket
+                      </button>
+                      <button 
+                        onClick={shuffleAdvancingTeams}
+                        className="flex items-center justify-center gap-3 px-8 py-5 bg-surface-container-high text-on-surface rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-surface-container-highest transition-all"
+                      >
+                        <Shuffle className="w-5 h-5" />
+                        Shuffle Seeding
+                      </button>
+                      <button 
+                        onClick={() => setAdvancingTeamsPreview(null)}
+                        className="px-8 py-5 font-bold text-on-surface/40 hover:text-on-surface/60 transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       ) : tab !== 'leaderboard' ? (
-        <div className="w-full max-w-7xl mx-auto px-6 md:px-12"><MatchesView matches={matches} onSelectMatch={onSelectMatch} stage={parseInt(tab)} /></div>
+        <div className="w-full max-w-7xl mx-auto px-6 md:px-12"><MatchesView matches={matches.filter(m => !m.isPlayoff && !m.deleted)} onSelectMatch={onSelectMatch} stage={parseInt(tab)} players={tournament.players} /></div>
       ) : (
         <div className="w-full max-w-7xl mx-auto px-6 md:px-12"><LeaderboardView tournament={leaderboard ? { ...tournament } : tournament} leaderboard={leaderboard} /></div>
       )}
+
 
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -314,6 +521,63 @@ export default function TournamentDetail({
               </div>
             </motion.div>
           </div>
+        )}
+        {showSettings && (
+          <SettingsModal 
+            tournament={tournament} 
+            onClose={() => setShowSettings(false)} 
+            onSave={async (updates) => {
+              // Call the original onUpdate first
+              onUpdate(updates);
+              
+              // Propagation logic
+              if (updates.qualifierSettings || updates.playoffSettings) {
+                const s_q = updates.qualifierSettings;
+                const s_p = updates.playoffSettings;
+                
+                const { writeBatch } = await import('firebase/firestore');
+                const batch = writeBatch(db);
+                let count = 0;
+
+                if (s_q) {
+                  // Propagate to all qualifier matches
+                  const q_matches = matches.filter(m => !m.isPlayoff);
+                  for (const m of q_matches) {
+                    const ref = doc(db, `tournaments/${tournament.id}/matches`, m.id!);
+                    batch.update(ref, {
+                      scoringMode: s_q.scoringMode,
+                      pointsToPlay: s_q.pointsToPlay,
+                      setsToPlay: s_q.setsToPlay,
+                      gamesPerSet: s_q.gamesPerSet,
+                      useGoldenPoint: s_q.useGoldenPoint
+                    });
+                    count++;
+                  }
+                }
+
+                if (s_p) {
+                  // Propagate to all playoff matches
+                  const p_matches = matches.filter(m => m.isPlayoff);
+                  for (const m of p_matches) {
+                    const ref = doc(db, `tournaments/${tournament.id}/matches`, m.id!);
+                    batch.update(ref, {
+                      scoringMode: s_p.scoringMode,
+                      pointsToPlay: s_p.pointsToPlay,
+                      setsToPlay: s_p.setsToPlay,
+                      gamesPerSet: s_p.gamesPerSet,
+                      useGoldenPoint: s_p.useGoldenPoint
+                    });
+                    count++;
+                  }
+                }
+
+                if (count > 0) {
+                  await batch.commit();
+                  console.log(`Propagated settings to ${count} matches`);
+                }
+              }
+            }} 
+          />
         )}
       </AnimatePresence>
     </motion.div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User } from 'firebase/auth';
-import { LogOut, Plus, ChevronRight } from 'lucide-react';
+import { LogOut, Plus, ChevronRight, UserCheck } from 'lucide-react';
 import { Tournament } from '../../../types';
 import { PadelBall } from '../../common/Icons';
 
@@ -9,11 +9,12 @@ interface TournamentListProps {
   tournaments: Tournament[];
   onSelect: (t: Tournament) => void;
   onCreateNew: () => void;
+  onManage: () => void;
   onLogout: () => void;
   user: User | null;
 }
 
-export default function TournamentList({ tournaments, onSelect, onCreateNew, onLogout, user }: TournamentListProps) {
+export default function TournamentList({ tournaments, onSelect, onCreateNew, onManage, onLogout, user }: TournamentListProps) {
   return (
     <motion.div 
       key="list"
@@ -39,13 +40,23 @@ export default function TournamentList({ tournaments, onSelect, onCreateNew, onL
             </h2>
           </div>
         </div>
-        <button 
-          onClick={onLogout}
-          className="p-4 rounded-xl bg-surface-container-low hover:bg-red-500/10 transition-all text-on-surface/40 hover:text-red-500 group"
-          title="Sign Out"
-        >
-          <LogOut className="w-6 h-6" />
-        </button>
+        <div className="flex-1 flex justify-end items-center gap-4">
+          <button 
+            onClick={onManage}
+            className="flex items-center gap-3 bg-surface-container-low text-on-surface px-8 py-4 rounded-xl font-bold hover:bg-surface-container-high transition-all shadow-sm"
+            title="Manage Players & Teams"
+          >
+            <UserCheck className="w-6 h-6" />
+            <span className="hidden md:inline">Manage Personnel</span>
+          </button>
+          <button 
+            onClick={onLogout}
+            className="p-4 rounded-xl bg-surface-container-low hover:bg-red-500/10 transition-all text-on-surface/40 hover:text-red-500 group"
+            title="Sign Out"
+          >
+            <LogOut className="w-6 h-6" />
+          </button>
+        </div>
       </div>
       {tournaments.length === 0 ? (
         <div className="flex flex-col items-center justify-start pt-0 pb-16 text-center">

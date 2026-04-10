@@ -10,6 +10,12 @@ export enum GameMode {
   TEAM_AMERICANO = 'Team Americano',
   TEAM_MEXICANO = 'Team Mexicano',
   MIXED_MEXICANO = 'Mixed Mexicano',
+  MIXED = 'Mixed',
+}
+
+export enum ScoringMode {
+  AMERICANO = 'americano',
+  TENNIS = 'tennis',
 }
 
 export enum MatchStatus {
@@ -22,6 +28,14 @@ export interface Player {
   name: string;
   gender?: 'man' | 'woman';
   teamName?: string;
+}
+
+export interface TournamentSettings {
+  scoringMode: ScoringMode;
+  pointsToPlay: number;
+  setsToPlay: number;
+  gamesPerSet: number;
+  useGoldenPoint: boolean;
 }
 
 export interface Tournament {
@@ -40,6 +54,17 @@ export interface Tournament {
   swissPools?: number;
   playoffTeams?: number;
   playoffType?: 'single' | 'double';
+  scoringMode?: ScoringMode;
+  qualifierMode?: GameMode;
+  playoffMode?: GameMode;
+  playoffStarted?: boolean;
+  advancingTeams?: string[][]; // Array of teams (names) advancing to playoff
+  advancingTeamsCount?: number;
+  setsToPlay?: number; // 1, 3, 5
+  gamesPerSet?: number; // 4, 6
+  useGoldenPoint?: boolean;
+  qualifierSettings?: TournamentSettings;
+  playoffSettings?: TournamentSettings;
 }
 
 export interface Match {
@@ -49,8 +74,12 @@ export interface Match {
   team2: string[];
   score1: number; // current games in current set
   score2: number;
+  points1?: string | number; // For tennis: 0, 15, 30, 40, Ad
+  points2?: string | number;
   sets1: number[]; // completed sets
   sets2: number[];
+  isTiebreak?: boolean;
+  scoringMode?: ScoringMode;
   serverIndex: number; // 0-3
   status: MatchStatus;
   winner?: 1 | 2;
@@ -62,6 +91,12 @@ export interface Match {
   losersMatchId?: string;
   isLosersBracket?: boolean;
   isSkeleton?: boolean;
+  isPlayoff?: boolean;
+  deleted?: boolean;
+  setsToPlay?: number;
+  gamesPerSet?: number;
+  useGoldenPoint?: boolean;
+  pointsToPlay?: number;
 }
 
 export interface PlayerStats {
@@ -73,6 +108,19 @@ export interface PlayerStats {
   pointsAgainst: number;
   missedPoints: number;
   matchesPlayed: number;
+}
+
+export interface PredefinedPlayer {
+  id?: string;
+  name: string;
+  gender?: 'man' | 'woman';
+}
+
+export interface PredefinedTeam {
+  id?: string;
+  name: string;
+  player1: string;
+  player2: string;
 }
 
 export enum OperationType {

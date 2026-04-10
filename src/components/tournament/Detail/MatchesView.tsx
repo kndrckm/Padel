@@ -1,18 +1,26 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, CheckCircle, Play } from 'lucide-react';
-import { Match, MatchStatus } from '../../../types';
+import { Match, MatchStatus, Player } from '../../../types';
 
 interface MatchesViewProps {
   matches: Match[];
   onSelectMatch: (m: Match) => void;
   stage: number;
+  players: Player[];
 }
 
-export const MatchesView = ({ matches, onSelectMatch, stage }: MatchesViewProps) => {
+export const MatchesView = ({ matches, onSelectMatch, stage, players }: MatchesViewProps) => {
+  const getTeamName = (playerNames: string[]) => {
+    if (!playerNames.length) return null;
+    const player = players.find(p => p.name === playerNames[0]);
+    if (player?.teamName) return player.teamName;
+    return null;
+  };
+
   const stageMatches = matches
     .filter(m => m.stage === stage)
-    .sort((a, b) => (a.matchIndex || 0) - (b.matchIndex || 0) || a.id.localeCompare(b.id));
+    .sort((a, b) => (a.matchIndex || 0) - (b.matchIndex || 0) || a.id!.localeCompare(b.id!));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -36,6 +44,11 @@ export const MatchesView = ({ matches, onSelectMatch, stage }: MatchesViewProps)
 
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 items-center gap-6">
             <div className="text-center sm:text-right flex flex-col gap-1">
+              {getTeamName(m.team1) && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8A9A5B] mb-1">
+                  {getTeamName(m.team1)}
+                </p>
+              )}
               {m.team1.length > 0 ? m.team1.map((p, i) => (
                 <p key={i} className="font-bold text-lg text-on-surface truncate">{p}</p>
               )) : <p className="font-bold text-sm text-on-surface/20 italic">TBD</p>}
@@ -62,6 +75,11 @@ export const MatchesView = ({ matches, onSelectMatch, stage }: MatchesViewProps)
             </div>
 
             <div className="text-center sm:text-left flex flex-col gap-1">
+               {getTeamName(m.team2) && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8A9A5B] mb-1">
+                  {getTeamName(m.team2)}
+                </p>
+              )}
               {m.team2.length > 0 ? m.team2.map((p, i) => (
                 <p key={i} className="font-bold text-lg text-on-surface truncate">{p}</p>
               )) : <p className="font-bold text-sm text-on-surface/20 italic">TBD</p>}

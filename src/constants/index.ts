@@ -11,7 +11,8 @@ export const MODE_DESCRIPTIONS: Record<GameMode, string> = {
   [GameMode.SUPER_MEXICANO]: "Like Mexicano but with extra points awarded for playing on (or closer to) the winning court.",
   [GameMode.TEAM_AMERICANO]: "Fixed teams play against all other teams exactly one time.",
   [GameMode.TEAM_MEXICANO]: "Mexicano format played with fixed teams.",
-  [GameMode.MIXED_MEXICANO]: "Dynamic mixed matchmaking based on leaderboard rankings."
+  [GameMode.MIXED_MEXICANO]: "Dynamic mixed matchmaking based on leaderboard rankings.",
+  [GameMode.MIXED]: "A qualifier stage (any mode) followed by a playoff bracket stage."
 };
 
 export const MATCH_DURATION = 20; // minutes

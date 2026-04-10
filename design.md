@@ -1,13 +1,33 @@
 # Design System: The Heritage Court Manual
 
-## 1. Overview & Creative North Star: "The Modern Alpinist"
+## 1. Color Palette: The Heritage Tones
+These are the canonical colors for the project. Always use these tokens.
+
+| Token | Hex | Usage |
+| :--- | :--- | :--- |
+| `surface` | `#fcfaee` | Main background, parchment feel. |
+| `surface-container-low` | `#f6f4e8` | Section backgrounds, slightly darker than base. |
+| `surface-container-lowest` | `#ffffff` | High-contrast cards, pure white. |
+| `surface-container-highest` | `#e5e3d7` | Deepest surface, used for losing states. |
+| `primary-container` | `#ffde59` | **Vibrant Sunshine Yellow.** Primary CTA background. |
+| `on-primary-container` | `#756100` | **Dark Heritage Olive.** Text on yellow backgrounds. |
+| `primary` | `#705d00` | **Condensed Olive.** Used for icons, accents, and dark CTAs (rare). |
+| `on-surface` | `#1b1c15` | Main text color (never use pure black). |
+| `secondary` | `#456553` | **Court Green.** Success states, special highlights. |
+| `outline-variant` | `#cfc6af` | Subtle dividers/outlines (use at 15% opacity). |
+| `man` | `#3b82f6` | **Sport Blue.** Background/icon color for man-gendered elements. |
+| `woman` | `#ec4899` | **Iconic Pink.** Background/icon color for woman-gendered elements. |
+
+---
+
+## 2. Overview & Creative North Star: "The Modern Alpinist"
 The Creative North Star for this design system is **"The Digital Country Club."** We are intentionally moving away from the "SaaS-blue" and "heavy-grid" layouts that dominate sports apps. Instead, we are channeling the heritage of 1970s racquet clubs—think high-end stationery, sun-drenched courts, and tactile prestige—reimagined through a minimalist, modern lens.
 
 To achieve this, we break the "template" look through **intentional asymmetry**. Hero sections should feature oversized, off-center typography that overlaps image containers. We use high-contrast typography scales (the juxtaposition of a heavy serif and a light sans-serif) to create an editorial feel that feels more like a premium magazine than a utility tool.
 
 ---
 
-## 2. Colors: Tonal Sophistication
+## 3. Colors: Tonal Sophistication
 This palette is designed to feel warm, optimistic, and expensive. We rely on the "Vibrant Sunshine" (`primary`) to provide energy against a "Soft Cream" (`surface`) foundation.
 
 ### The "No-Line" Rule
@@ -25,7 +45,7 @@ To elevate the "Vintage" vibe into "Modern Tech," use **Glassmorphism** for floa
 
 ---
 
-## 3. Typography: The Editorial Contrast
+## 4. Typography: The Editorial Contrast
 We use a "High-Low" typographic approach to signal both tradition and efficiency.
 
 *   **Display & Headlines (Noto Serif):** These are your "Brand Moments." Use `display-lg` for tournament titles and `headline-md` for section headers. The serif font conveys authority and the "Vintage Court" legacy.
@@ -34,7 +54,7 @@ We use a "High-Low" typographic approach to signal both tradition and efficiency
 
 ---
 
-## 4. Elevation & Depth: Tonal Layering
+## 5. Elevation & Depth: Tonal Layering
 Avoid the "material" look of heavy shadows. We convey depth through light and color.
 
 *   **The Layering Principle:** Instead of a shadow, place a `surface-container-lowest` card on top of a `surface-container-low` background. The slight shift from cream to pure white creates a soft, natural lift.
@@ -43,7 +63,14 @@ Avoid the "material" look of heavy shadows. We convey depth through light and co
 
 ---
 
-## 5. Components: Refined Primitives
+## 6. Components: Refined Primitives
+
+### Buttons & Interactive Elements
+*   **Main Action (CTA):** Use `bg-primary-container` with `text-on-primary-container`. This is the "New Tournament" look.
+    *   *Example:* `bg-primary-container text-on-primary-container shadow-lg shadow-primary/10`
+*   **Active Tab/Toggle:** Use `bg-primary-container` and `text-on-primary-container` for the active state.
+*   **Secondary Action:** Use `bg-surface-container-low` with `text-on-surface`.
+*   **Shadows:** Avoid heavy black shadows. Use `shadow-primary/10` or `shadow-on-surface/5`.
 
 ### Buttons
 *   **Primary:** Solid `primary_container` (#ffde59) with `on_primary_container` (#756100) text. Use `md` (0.375rem) roundedness—not full pill—to maintain a sophisticated, structured look.

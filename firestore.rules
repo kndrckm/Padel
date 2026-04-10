@@ -16,7 +16,7 @@ service cloud.firestore {
 
     function isValidTournament(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano', 'Mixed Mexicano'] &&
+             data.mode in ['Single Elimination', 'Double Elimination', 'Round Robin', 'Swiss System', 'Normal Americano', 'Mix Americano', 'Mexicano', 'Super Mexicano', 'Team Americano', 'Team Mexicano', 'Mixed Mexicano', 'Mixed'] &&
              data.status in ['active', 'completed'] &&
              data.players is list && data.players.size() >= 2 && data.players.size() <= 64 &&
              data.courtsCount is int && data.courtsCount > 0 &&
@@ -27,7 +27,18 @@ service cloud.firestore {
              (!('numberOfMatches' in data) || data.numberOfMatches is int) &&
              (!('swissPools' in data) || data.swissPools is int) &&
              (!('playoffTeams' in data) || data.playoffTeams is int) &&
-             (!('playoffType' in data) || data.playoffType in ['single', 'double']);
+             (!('playoffType' in data) || data.playoffType in ['single', 'double']) &&
+             (!('scoringMode' in data) || data.scoringMode in ['americano', 'tennis', 'tennis_full']) &&
+             (!('qualifierMode' in data) || data.qualifierMode is string) &&
+             (!('playoffMode' in data) || data.playoffMode is string) &&
+             (!('setsToPlay' in data) || data.setsToPlay is int) &&
+             (!('gamesPerSet' in data) || data.gamesPerSet is int) &&
+             (!('useGoldenPoint' in data) || data.useGoldenPoint is bool) &&
+             (!('currentStage' in data) || data.currentStage is int) &&
+             (!('matchesPerStage' in data) || data.matchesPerStage is int) &&
+             (!('playoffStarted' in data) || data.playoffStarted is bool) &&
+             (!('advancingTeamsCount' in data) || data.advancingTeamsCount is int) &&
+             (!('advancingTeams' in data) || data.advancingTeams is list);
     }
 
     function isValidMatch(data) {
@@ -62,6 +73,18 @@ service cloud.firestore {
           allow write: if true;
           allow delete: if true;
         }
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /predefinedPlayers/{playerId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      match /predefinedTeams/{teamId} {
+        allow read, write: if isOwner(userId);
       }
     }
 

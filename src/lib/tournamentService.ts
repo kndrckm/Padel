@@ -3,10 +3,11 @@ import {
   addDoc, 
   doc, 
   deleteDoc, 
-  updateDoc 
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { GameMode, Tournament, Player, OperationType } from '../types';
+import { GameMode, Tournament, Player, OperationType, ScoringMode, MatchStatus } from '../types';
 import { handleFirestoreError } from './firestore';
 import { generateInitialMatches } from '../utils/tournamentLogic';
 
@@ -17,10 +18,17 @@ export async function createTournament(
   players: Player[], 
   courtsCount: number, 
   pointsToPlay: number, 
+  scoringMode: ScoringMode = ScoringMode.AMERICANO,
   numberOfMatches?: number, 
   swissPools?: number, 
   playoffTeams?: number, 
-  playoffType?: 'single' | 'double'
+  playoffType?: 'single' | 'double',
+  qualifierMode?: GameMode,
+  playoffMode?: GameMode,
+  advancingTeamsCount?: number,
+  setsToPlay?: number,
+  gamesPerSet?: number,
+  useGoldenPoint?: boolean
 ): Promise<string> {
   const processedPlayers = players.map((p, i) => ({
     ...p,
@@ -37,14 +45,42 @@ export async function createTournament(
       players: processedPlayers,
       courtsCount,
       pointsToPlay,
+      scoringMode,
       numberOfMatches,
       swissPools,
       playoffTeams,
       playoffType,
+      qualifierMode,
+      playoffMode,
+      playoffStarted: false,
+      advancingTeamsCount,
+      setsToPlay,
+      gamesPerSet,
+      useGoldenPoint,
+      qualifierSettings: {
+        scoringMode: scoringMode,
+        pointsToPlay: pointsToPlay,
+        setsToPlay: setsToPlay || 1,
+        gamesPerSet: gamesPerSet || 6,
+        useGoldenPoint: useGoldenPoint ?? true
+      },
+      playoffSettings: {
+        scoringMode: ScoringMode.TENNIS,
+        pointsToPlay: pointsToPlay,
+        setsToPlay: 3,
+        gamesPerSet: 6,
+        useGoldenPoint: true
+      },
       currentStage: 1
     });
 
-    const initialMatches = generateInitialMatches(mode, processedPlayers, courtsCount, numberOfMatches, swissPools);
+    const initialMatches = generateInitialMatches(
+      mode === GameMode.MIXED ? qualifierMode! : mode, 
+      processedPlayers, 
+      courtsCount, 
+      numberOfMatches, 
+      swissPools
+    );
 
     for (const match of initialMatches) {
       await addDoc(collection(db, `tournaments/${tournamentRef.id}/matches`), {
@@ -52,9 +88,20 @@ export async function createTournament(
         tournamentId: tournamentRef.id,
         score1: 0,
         score2: 0,
+        points1: scoringMode === ScoringMode.TENNIS ? '0' : 0,
+        points2: scoringMode === ScoringMode.TENNIS ? '0' : 0,
         sets1: [],
         sets2: [],
-        serverIndex: 0
+        isTiebreak: false,
+        scoringMode,
+        setsToPlay: setsToPlay || (scoringMode === ScoringMode.TENNIS ? 3 : 1),
+        gamesPerSet: gamesPerSet || 6,
+        useGoldenPoint: useGoldenPoint ?? true,
+        pointsToPlay: pointsToPlay,
+        serverIndex: 0,
+        isPlayoff: false,
+        status: MatchStatus.PENDING,
+        createdAt: serverTimestamp()
       });
     }
 

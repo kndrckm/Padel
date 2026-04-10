@@ -18,6 +18,8 @@ export interface GeneratedMatch {
   sets1?: number[];
   sets2?: number[];
   serverIndex?: number;
+  isPlayoff?: boolean;
+  scoringMode?: string; // Using string to avoid circular dependency or import ScoringMode if needed
 }
 
 export function generateAmericanoMatches(
@@ -457,17 +459,33 @@ export function generateInitialMatches(
   }
 
   // Assign courts and Stage 1 for any matches that don't have them
-  return initialMatches.map((m, i) => ({ 
-    ...m, 
-    stage: m.stage || 1, 
-    court: (i % courtsCount) + 1,
-    score1: m.score1 ?? 0,
-    score2: m.score2 ?? 0,
-    sets1: m.sets1 ?? [],
-    sets2: m.sets2 ?? [],
-    status: m.status ?? MatchStatus.PENDING,
-    serverIndex: 0
-  }));
+  return (mode === GameMode.SWISS_SYSTEM || mode === GameMode.NORMAL_AMERICANO || mode === GameMode.MIX_AMERICANO || mode === GameMode.TEAM_AMERICANO || mode === GameMode.ROUND_ROBIN || mode === GameMode.MIXED_MEXICANO || mode === GameMode.MEXICANO || mode === GameMode.SUPER_MEXICANO || mode === GameMode.TEAM_MEXICANO) ? 
+    initialMatches.map((m, i) => ({ 
+      ...m, 
+      id: `q_s${m.stage}_m${i}`, 
+      tournamentId: '',
+      isPlayoff: false,
+      score1: m.score1 ?? 0,
+      score2: m.score2 ?? 0,
+      points1: 0,
+      points2: 0,
+      sets1: m.sets1 ?? [],
+      sets2: m.sets2 ?? [],
+      serverIndex: 0
+    })) : 
+    initialMatches.map((m, i) => ({ 
+      ...m, 
+      id: `m_${i}`, 
+      tournamentId: '',
+      isPlayoff: false,
+      score1: 0,
+      score2: 0,
+      points1: 0,
+      points2: 0,
+      sets1: [],
+      sets2: [],
+      serverIndex: 0
+    }));
 }
 
 function generateSingleEliminationMatches(teams: string[][], courtsCount: number): GeneratedMatch[] {

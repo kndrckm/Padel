@@ -14,6 +14,7 @@ import TournamentList from '../tournament/List';
 import TournamentCreator from '../tournament/Creator';
 import TournamentDetail from '../tournament/Detail';
 import MatchScorer from '../match/Scorer';
+import PredefinedManager from '../user/PredefinedManager';
 import { ViewState } from '../../hooks/useAppLogic';
 
 interface MainViewProps {
@@ -48,16 +49,18 @@ export const MainView = ({
           tournaments={tournaments}
           onSelect={(t) => { setSelectedTournament(t); setView('detail'); }}
           onCreateNew={() => setView('create')}
+          onManage={() => setView('manage')}
           onLogout={handleLogout}
           user={user}
         />
       )}
 
-      {view === 'create' && (
+      {view === 'create' && user && (
         <TournamentCreator 
           onCancel={() => setView('list')}
-          onCreate={async (name, mode, players, courts, pts, matchesCount, pools, pTeams, pType) => {
-            const id = await createTournamentService(user!.uid, name, mode, players, courts, pts, matchesCount, pools, pTeams, pType);
+          user={user}
+          onCreate={async (name, mode, players, courts, pts, scoringMode, matchesCount, pools, pTeams, pType, qMode, pMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint) => {
+            const id = await createTournamentService(user!.uid, name, mode, players, courts, pts, scoringMode, matchesCount, pools, pTeams, pType, qMode, pMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint);
             const tDoc = await getDoc(doc(db, 'tournaments', id));
             setSelectedTournament({ id, ...tDoc.data() } as Tournament);
             setView('detail');
@@ -98,6 +101,13 @@ export const MainView = ({
           }}
           pointsToPlay={selectedTournament.pointsToPlay}
           user={user}
+        />
+      )}
+
+      {view === 'manage' && user && (
+        <PredefinedManager 
+          user={user}
+          onBack={() => setView('list')}
         />
       )}
     </AnimatePresence>

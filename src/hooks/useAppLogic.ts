@@ -19,7 +19,7 @@ import { db, auth } from '../lib/firebase';
 import { Tournament, Match, OperationType } from '../types';
 import { handleFirestoreError } from '../lib/firestore';
 
-export type ViewState = 'list' | 'create' | 'detail' | 'match';
+export type ViewState = 'list' | 'create' | 'detail' | 'match' | 'manage';
 
 export function useAppLogic() {
   const [user, setUser] = useState<User | null>(null);
@@ -96,10 +96,16 @@ export function useAppLogic() {
       const list: Match[] = [];
       snapshot.forEach((d) => list.push({ id: d.id, ...d.data() } as Match));
       setMatches(list);
+      
+      // Keep activeMatch updated if it exists
+      if (activeMatch) {
+         const updated = list.find(m => m.id === activeMatch.id);
+         if (updated) setActiveMatch(updated);
+      }
     }, (error) => handleFirestoreError(error, OperationType.LIST, `tournaments/${selectedTournament.id}/matches`));
 
     return () => unsubscribe();
-  }, [selectedTournament?.id]);
+  }, [selectedTournament?.id, activeMatch?.id]);
 
   const handleLogin = async () => {
     try {
