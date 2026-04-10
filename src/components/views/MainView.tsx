@@ -81,6 +81,7 @@ export const MainView = ({
           }}
           onUpdate={(updates) => updateTournamentService(selectedTournament.id!, updates)}
           isCreator={user?.uid === selectedTournament.creatorId}
+          user={user}
         />
       )}
 

@@ -35,6 +35,7 @@ interface TournamentDetailProps {
   onDelete: () => void;
   onUpdate: (updates: Partial<Tournament>) => void;
   isCreator: boolean;
+  user: User | null;
 }
 
 export default function TournamentDetail({ 
@@ -44,7 +45,8 @@ export default function TournamentDetail({
   onSelectMatch, 
   onDelete, 
   onUpdate, 
-  isCreator 
+  isCreator,
+  user
 }: TournamentDetailProps) {
   const isStageBasedMode = [
     GameMode.MEXICANO, 
@@ -306,7 +308,7 @@ export default function TournamentDetail({
 
   const handleStartPlayoff = async () => {
 
-    if (!isCreator || !advancingTeamsPreview) return;
+    if (!user || !advancingTeamsPreview) return;
     
     try {
       const playoffTeamsCount = (tournament.isKatapgama || tournament.mode === GameMode.MIXED) ? 8 : (tournament.advancingTeamsCount || 8);
@@ -418,8 +420,8 @@ export default function TournamentDetail({
   const currentStageCompleted = currentStageMatches.length > 0 && currentStageMatches.every(m => m.status === MatchStatus.COMPLETED);
   const nextStageExists = matches.some(m => m.stage === (tournament.currentStage || 1) + 1);
   const isLatestStage = tab === (tournament.currentStage || 1).toString();
-  const canGenerateNextStage = isCreator && isStageBasedMode && currentStageCompleted && !nextStageExists && (tournament.currentStage || 1) < maxPossibleStages && isLatestStage;
-  const canStartPlayoffs = isCreator && (tournament.mode === GameMode.ROUND_ROBIN || tournament.isKatapgama) && currentStageCompleted && (tournament.currentStage || 1) === maxPossibleStages && !nextStageExists && isLatestStage;
+  const canGenerateNextStage = user && isStageBasedMode && currentStageCompleted && !nextStageExists && (tournament.currentStage || 1) < maxPossibleStages && isLatestStage;
+  const canStartPlayoffs = user && (tournament.mode === GameMode.ROUND_ROBIN || tournament.isKatapgama) && currentStageCompleted && (tournament.currentStage || 1) === maxPossibleStages && !nextStageExists && isLatestStage;
 
   const maxStage = useMemo(() => {
     const stagesFromMatches = matches.filter(m => !m.isPlayoff && !m.deleted).map(m => m.stage || 1);
@@ -474,7 +476,7 @@ export default function TournamentDetail({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isMixedMode && tournament.playoffStarted && isCreator && (
+            {isMixedMode && tournament.playoffStarted && user && (
               <button 
                 onClick={handleResetPlayoff} 
                 disabled={isResetingPlayoff}
