@@ -49,7 +49,7 @@ export default function MatchScorer({
   const [points2, setPoints2] = useState<string | number>(match.points2 ?? (match.scoringMode === ScoringMode.TENNIS ? '0' : 0));
   const [isTiebreak, setIsTiebreak] = useState(match.isTiebreak ?? false);
   const [serverIndex, setServerIndex] = useState(match.serverIndex);
-  const [activeUsers, setActiveUsers] = useState<number>(0);
+  const [presenceUsers, setPresenceUsers] = useState<any[]>([]);
 
   const { getNextPoint, checkGameWin, checkSetWin } = useTennisLogic();
   const scoringMode = match.scoringMode || tournament.scoringMode || ScoringMode.AMERICANO;
@@ -95,6 +95,8 @@ export default function MatchScorer({
         await setDoc(presenceRef, {
           timestamp: new Date().toISOString(),
           userId: user?.uid || 'guest',
+          displayName: user?.displayName || 'Guest',
+          photoURL: user?.photoURL || null,
           email: user?.email || 'Guest'
         });
       } catch (error) {
@@ -106,7 +108,7 @@ export default function MatchScorer({
 
     const q = query(collection(db, `tournaments/${match.tournamentId}/matches/${match.id}/presence`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setActiveUsers(snapshot.size);
+      setPresenceUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
     return () => {
@@ -427,10 +429,42 @@ export default function MatchScorer({
           </div>
         </div>
 
-        {activeUsers > 1 && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex items-center gap-5">
-            <AlertTriangle className="w-6 h-6 text-amber-500" />
-            <p className="text-sm font-bold text-on-surface">{activeUsers} people are currently scoring this match.</p>
+        {presenceUsers.length > 1 && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center shadow-inner">
+                <AlertTriangle className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-lg font-black text-on-surface">Collaboration Mode</p>
+                <p className="text-sm font-bold text-on-surface/40 leading-tight">Multiple users are currently scoring this match.</p>
+              </div>
+            </div>
+
+            <div className="flex -space-x-4">
+              {presenceUsers.map((u, i) => (
+                <div 
+                  key={u.id} 
+                  className="group relative"
+                  style={{ zIndex: presenceUsers.length - i }}
+                >
+                  {u.photoURL ? (
+                    <img 
+                      src={u.photoURL} 
+                      alt={u.displayName} 
+                      className="w-14 h-14 rounded-2xl border-4 border-surface shadow-xl hover:-translate-y-1 transition-transform cursor-help"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl border-4 border-surface bg-primary-container text-on-primary-container flex items-center justify-center font-black text-lg shadow-xl hover:-translate-y-1 transition-transform cursor-help">
+                      {u.displayName[0]}
+                    </div>
+                  )}
+                  <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-4 py-2 bg-on-surface text-surface text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-2xl">
+                    {u.displayName} {u.userId === user?.uid ? '(You)' : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         )}
 

@@ -12,8 +12,9 @@
   --color-surface-variant: #f0ede0;
   --color-on-surface: #1b1c15;
   
-  --color-primary: #705d00;
-  --color-primary-container: #ffde59;
+  --color-primary: #ffde59;
+  --color-on-primary: #453c00;
+  --color-primary-container: #ffdf5e;
   --color-on-primary-container: #756100;
   
   --color-secondary: #456553;
