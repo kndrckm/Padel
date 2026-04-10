@@ -523,7 +523,7 @@ export default function TournamentDetail({
         <div className="flex bg-surface-container-low p-1.5 rounded-2xl w-fit overflow-x-auto max-w-full no-scrollbar">
           {(isStageBasedMode || isMixedMode) && Array.from({ length: maxStage }, (_, i) => (i + 1).toString()).map(s => (
             <button key={s} onClick={() => setTab(s)} className={`px-8 py-3.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${tab === s ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>
-              {isMixedMode && s === "1" && maxStage === 1 ? 'Qualifier' : `Stage ${s}`}
+              {`Stage ${s}`}
             </button>
           ))}
           {isBracketMode && !isMixedMode && <button onClick={() => setTab('bracket')} className={`px-10 py-3.5 rounded-xl font-bold text-sm transition-all ${tab === 'bracket' ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/60'}`}>Bracket</button>}

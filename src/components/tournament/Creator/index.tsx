@@ -546,13 +546,13 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                 {
                   id: 'Mixed',
                   title: 'Mixed Mode',
-                  description: 'Qualifier stage followed by a Playoff bracket.',
+                  description: 'Stage 1 (Initial) followed by a Playoff bracket.',
                   modes: [GameMode.MIXED]
                 },
                 {
                   id: 'Katapgama',
                   title: 'Katapgama Exclusive',
-                  description: 'The official Katapgama Fun Padel format. 16 Teams, 2 Stage Qualifier (16pts) + Playoff (Tennis).',
+                  description: 'The official Katapgama Fun Padel format. 16 Teams, 2 Stage format (16pts) + Playoff (Tennis).',
                   modes: [GameMode.KATAPGAMA_FUN_PADEL]
                 }
               ].map((cat) => {
@@ -593,7 +593,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
                     {mode === GameMode.MIXED && isSelected && (
                       <div className="pt-4 border-t border-on-surface/10 space-y-4">
                         <div className="relative">
-                          <label className="text-[10px] uppercase tracking-wider text-on-surface/40 block mb-1">Qualifier Mode</label>
+                          <label className="text-[10px] uppercase tracking-wider text-on-surface/40 block mb-1">Stage 1 Mode</label>
                           <select
                             value={qualifierMode}
                             onChange={(e) => setQualifierMode(e.target.value as GameMode)}

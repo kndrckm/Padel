@@ -179,7 +179,7 @@ export const SettingsModal = ({ tournament, onClose, onSave }: SettingsModalProp
           <div className={`grid grid-cols-1 ${isMixedMode ? 'md:grid-cols-2' : ''} gap-10`}>
             {isMixedMode ? (
               <>
-                {renderSection("Qualifier Stage Configuration", qualifier, setQualifier)}
+                {renderSection("Stage 1 Configuration", qualifier, setQualifier)}
                 {renderSection("Playoff Stage Configuration", playoff, setPlayoff)}
               </>
             ) : (
