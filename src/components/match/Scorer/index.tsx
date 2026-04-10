@@ -488,51 +488,24 @@ export default function MatchScorer({
 
         {/* Controls & History in Next Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Set History hidden as requested */}
+          {/* 
           <div className="lg:col-span-8 flex flex-col gap-8">
-            <div className="bg-surface-container-low p-8 rounded-[2.5rem] border border-on-surface/5">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-1.5 h-6 bg-primary rounded-full" />
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-on-surface/40">Set History</span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {[1, 2].map(teamNum => (
-                  <div key={teamNum} className="space-y-4">
-                    <div className="flex items-center justify-between px-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-on-surface/30">Team {teamNum}</p>
-                      <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">
-                        {teamNum === 1 ? match.team1.join(' & ') : match.team2.join(' & ')}
-                      </span>
-                    </div>
-                    <div className="flex gap-3">
-                      {(teamNum === 1 ? sets1 : sets2).map((s, i) => (
-                        <div key={i} className="relative group">
-                          <input 
-                            type="number" 
-                            value={s} 
-                            onChange={(e) => handleSetScoreChange(teamNum as 1 | 2, i, e.target.value)} 
-                            className="w-16 h-16 bg-surface-container-lowest border border-on-surface/5 rounded-2xl flex items-center justify-center font-black text-2xl text-center outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all tabular-nums shadow-inner" 
-                          />
-                          <div className="absolute -top-2 -right-2 w-5 h-5 bg-surface-container-high rounded-full flex items-center justify-center text-[10px] font-bold border border-on-surface/5">
-                            {i + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ... 
           </div>
+          */}
 
           <div className="lg:col-span-4 space-y-6">
             <div className="pt-0 flex flex-col gap-4">
+              {/* Finish Current Set button hidden as requested */}
+              {/* 
               <button 
                 onClick={handleSet} 
                 className="w-full py-6 rounded-[2rem] font-black text-xs uppercase tracking-widest bg-surface-container-high text-on-surface hover:bg-on-surface hover:text-surface-container-lowest transition-all shadow-sm"
               >
                 Finish Current Set
               </button>
+              */}
               <button 
                 onClick={complete} 
                 className="w-full bg-[#FDE047] text-on-surface py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#FDE047]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"

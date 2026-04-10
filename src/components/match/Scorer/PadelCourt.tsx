@@ -204,9 +204,9 @@ export const PadelCourt = ({
               <button 
                 onClick={() => !isMaxed && onScoreUpdate(1, 1)}
                 disabled={isMaxed}
-                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
+                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
               >
-                <Plus className="w-6 h-6" strokeWidth={4} />
+                <Plus className="w-10 h-10" strokeWidth={5} />
               </button>
             </div>
             <div className="absolute top-[75%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
@@ -237,9 +237,9 @@ export const PadelCourt = ({
               <button 
                 onClick={() => !isMaxed && onScoreUpdate(2, 1)}
                 disabled={isMaxed}
-                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
+                className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center transition-all shadow-xl ${isMaxed ? 'bg-white/5 text-white/10 cursor-not-allowed shadow-none' : 'bg-[#FDE047] text-[#1A1A1A] hover:scale-110 active:scale-95 shadow-[#FDE047]/30'}`}
               >
-                <Plus className="w-6 h-6" strokeWidth={4} />
+                <Plus className="w-10 h-10" strokeWidth={5} />
               </button>
             </div>
             <div className="absolute top-[75%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
