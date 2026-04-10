@@ -302,6 +302,8 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
           stats[t1].gamesLost += m.score2;
           stats[t2].gamesWon += m.score2;
           stats[t2].gamesLost += m.score1;
+          stats[t1].totalPoints = stats[t1].gamesWon; // Population for report clarity
+          stats[t2].totalPoints = stats[t2].gamesWon;
           stats[t1].diff = stats[t1].gamesWon - stats[t1].gamesLost;
           stats[t2].diff = stats[t2].gamesWon - stats[t2].gamesLost;
 
