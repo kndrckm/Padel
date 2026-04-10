@@ -80,12 +80,15 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
         const score1 = Math.floor(Math.random() * 17); // 0-16
         const score2 = 16 - score1;
         
-        const matchRef = doc(db, `tournaments/${currentTournament.id}/matches`, m.id!);
+        let winner: 1 | 2 | undefined = undefined;
+        if (score1 > score2) winner = 1;
+        else if (score1 < score2) winner = 2;
+        
         batch.update(matchRef, {
           score1,
           score2,
           status: MatchStatus.COMPLETED,
-          winner: score1 >= score2 ? 1 : 2
+          winner
         });
       }
       await batch.commit();
