@@ -235,41 +235,71 @@ export function generateNextStageMatches(
     const divisor = isTeamMode ? 2 : 4;
     const targetMatches = Math.floor(sortedPlayers.length / divisor);
     const tempStats = new Map<string, number>();
+    
     sortedPlayers.forEach(p => {
       const s = leaderboard.find(ls => ls.name === p);
       tempStats.set(p, s?.matchesPlayed || 0);
     });
 
+    const getTeamMembers = (teamName: string): string[] => {
+      const members = tournament.players
+        .filter((p: any) => p.teamName === teamName || p.name === teamName)
+        .map((p: any) => p.name);
+      return members.length > 0 ? members : [teamName];
+    };
+
     for (let m = 0; m < targetMatches; m++) {
-      const availablePlayers = sortedPlayers
-        .filter(p => !matchPairs.some(mp => mp.team1.includes(p) || mp.team2.includes(p)))
+      const availableItems = sortedPlayers
+        .filter(p => !matchPairs.some(mp => {
+          if (isTeamMode) {
+            return mp.logicId === p || mp.team1.includes(p) || mp.team2.includes(p); // logicId is team name for team modes
+          }
+          return mp.team1.includes(p) || mp.team2.includes(p);
+        }))
         .sort((a, b) => tempStats.get(a)! - tempStats.get(b)! || (leaderboard.find(ls => ls.name === b)?.pointsFor || 0) - (leaderboard.find(ls => ls.name === a)?.pointsFor || 0));
 
-      if (availablePlayers.length < 4) break;
+      if (isTeamMode) {
+        if (availableItems.length < 2) break;
+        const t1Name = availableItems[0];
+        const t2Name = availableItems[1];
+        
+        matchPairs.push({ 
+          team1: getTeamMembers(t1Name), 
+          team2: getTeamMembers(t2Name), 
+          stage: nextStage, 
+          court: (m % courtsCount) + 1,
+          logicId: t1Name // storing team name as logicId for tracking
+        });
+        
+        tempStats.set(t1Name, tempStats.get(t1Name)! + 1);
+        tempStats.set(t2Name, tempStats.get(t2Name)! + 1);
+      } else {
+        if (availableItems.length < 4) break;
 
-      const p1 = availablePlayers[0];
-      const p2 = availablePlayers[1];
-      const p3 = availablePlayers[2];
-      const p4 = availablePlayers[3];
+        const p1 = availableItems[0];
+        const p2 = availableItems[1];
+        const p3 = availableItems[2];
+        const p4 = availableItems[3];
 
-      const options = [
-        { t1: [p1, p4], t2: [p2, p3] },
-        { t1: [p1, p3], t2: [p2, p4] },
-        { t1: [p1, p2], t2: [p3, p4] }
-      ];
+        const options = [
+          { t1: [p1, p4], t2: [p2, p3] },
+          { t1: [p1, p3], t2: [p2, p4] },
+          { t1: [p1, p2], t2: [p3, p4] }
+        ];
 
-      let selected = options[0];
-      // Try to find a pairing that hasn't played together recently
-      for (const opt of options) {
-        if (!playedPairs.has([...opt.t1].sort().join(',')) && !playedPairs.has([...opt.t2].sort().join(','))) {
-          selected = opt;
-          break;
+        let selected = options[0];
+        // Try to find a pairing that hasn't played together recently
+        for (const opt of options) {
+          if (!playedPairs.has([...opt.t1].sort().join(',')) && !playedPairs.has([...opt.t2].sort().join(','))) {
+            selected = opt;
+            break;
+          }
         }
-      }
 
-      matchPairs.push({ team1: selected.t1, team2: selected.t2, stage: nextStage, court: (m % courtsCount) + 1 });
-      selected.t1.forEach(p => tempStats.set(p, tempStats.get(p)! + 1));
-      selected.t2.forEach(p => tempStats.set(p, tempStats.get(p)! + 1));
+        matchPairs.push({ team1: selected.t1, team2: selected.t2, stage: nextStage, court: (m % courtsCount) + 1 });
+        selected.t1.forEach(p => tempStats.set(p, tempStats.get(p)! + 1));
+        selected.t2.forEach(p => tempStats.set(p, tempStats.get(p)! + 1));
+      }
     }
   } else if (tournament.mode === GameMode.MIXED_MEXICANO) {
     const men = tournament.players.filter((p: any) => p.gender === 'man');
