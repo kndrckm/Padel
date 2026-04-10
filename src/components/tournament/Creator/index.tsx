@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { GameMode, Player, ScoringMode } from '../../../types';
 import { PadelBall, ManIcon, WomanIcon } from '../../common/Icons';
-import { KATAPGAMA_TEAMS } from '../../../constants';
+import { KATAPGAMA_TEAMS, MODE_DESCRIPTIONS } from '../../../constants';
 import { KatapgamaLogo } from '../../common/KatapgamaLogo';
 import { User } from 'firebase/auth';
 import { getPredefinedPlayers, getPredefinedTeams } from '../../../lib/userService';
@@ -298,19 +298,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
         mode, 
         validPlayers, 
         courtsCount, 
-        pointsToPlay, 
-        scoringMode, 
-        customMatchCount || undefined, 
-        swissPools, 
-        playoffTeams, 
-        playoffType, 
-        qualifierMode, 
-        playoffMode,
-        mode === GameMode.MIXED ? playoffTeams : undefined,
-        setsToPlay,
-        gamesPerSet,
-        useGoldenPoint
-      );
+      await onCreate(name, mode, players, courtsCount, pointsToPlay, scoringMode, currentMatchCount, swissPools, playoffTeams, playoffType, qualifierMode, playoffMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint);
     } catch (err) {
       console.error('Submit error:', err);
       setNotification({ message: 'Failed to create tournament. Please try again.', type: 'error' });

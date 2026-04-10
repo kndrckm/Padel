@@ -37,7 +37,7 @@ export async function createTournament(
 
   try {
     const isKatapgama = mode === GameMode.KATAPGAMA_FUN_PADEL;
-    const effectiveMode = isKatapgama ? GameMode.TEAM_AMERICANO : (mode === GameMode.MIXED ? qualifierMode! : mode);
+    const effectiveMode = isKatapgama ? GameMode.TEAM_MEXICANO : (mode === GameMode.MIXED ? qualifierMode! : mode);
     
     // For Katapgama, force 16 points, 2 matches, 2 courts, and Team Americano qualifier
     const finalPointsToPlay = isKatapgama ? 16 : pointsToPlay;
@@ -60,7 +60,7 @@ export async function createTournament(
       swissPools: swissPools || null,
       playoffTeams: isKatapgama ? 8 : (playoffTeams || null),
       playoffType: isKatapgama ? 'single' : (playoffType || null),
-      qualifierMode: isKatapgama ? GameMode.TEAM_AMERICANO : (qualifierMode || null),
+      qualifierMode: isKatapgama ? GameMode.TEAM_MEXICANO : (qualifierMode || null),
       playoffMode: isKatapgama ? GameMode.SINGLE_ELIMINATION : (playoffMode || null),
       playoffStarted: false,
       advancingTeamsCount: isKatapgama ? 8 : (advancingTeamsCount || null),
