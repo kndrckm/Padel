@@ -254,7 +254,7 @@ export default function TournamentDetail({
       // Final fallback to ensure stable rendering if opponents performed identically
       return a.name.localeCompare(b.name);
     });
-  }, [tournament, matches, players]);
+  }, [tournament, matches, tournament.players]);
 
   const generateNextStage = async () => {
     const currentStage = tournament.currentStage || 1;
