@@ -261,14 +261,25 @@ export function generateNextStageMatches(
       if (isTeamMode) {
         if (availableItems.length < 2) break;
         const t1Name = availableItems[0];
-        const t2Name = availableItems[1];
+        
+        // WIDENED MATCHMAKING: Pick from the next 3 available ranks to add variety
+        const poolSize = Math.min(3, availableItems.length - 1);
+        const opponentPool = availableItems.slice(1, poolSize + 1);
+        let t2Name = opponentPool[Math.floor(Math.random() * opponentPool.length)];
+        
+        // REPEAT PROTECTION: Try to pull a different team from the pool if this is a repeat match
+        const isRepeat = (a: string, b: string) => playedPairs.has([a, b].sort().join(' vs '));
+        if (isRepeat(t1Name, t2Name) && opponentPool.length > 1) {
+          const freshOpponent = opponentPool.find(name => !isRepeat(t1Name, name));
+          if (freshOpponent) t2Name = freshOpponent;
+        }
         
         matchPairs.push({ 
           team1: getTeamMembers(t1Name), 
           team2: getTeamMembers(t2Name), 
           stage: nextStage, 
           court: (m % courtsCount) + 1,
-          logicId: t1Name // storing team name as logicId for tracking
+          logicId: t1Name
         });
         
         tempStats.set(t1Name, tempStats.get(t1Name)! + 1);
