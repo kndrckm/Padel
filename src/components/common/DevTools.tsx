@@ -150,11 +150,45 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
           });
 
           return Object.values(stats).sort((a: any, b: any) => {
-            if (b.wins !== a.wins) return b.wins - a.wins;
+            const aTotal = a.gamesWon + (a.missedPoints || 0);
+            const bTotal = b.gamesWon + (b.missedPoints || 0);
             const aDiff = a.gamesWon - a.gamesLost;
             const bDiff = b.gamesWon - b.gamesLost;
+            
+            if (bTotal !== aTotal) return bTotal - aTotal;
             if (bDiff !== aDiff) return bDiff - aDiff;
-            return b.totalPoints - a.totalPoints;
+            if (b.wins !== a.wins) return b.wins - a.wins;
+
+            // Tie Breaker: Head-to-Head
+            const h2hMatches = matches.filter(m => {
+              const team1 = m.team1.join(' & ');
+              const team2 = m.team2.join(' & ');
+              return (team1 === a.name && team2 === b.name) || (team1 === b.name && team2 === a.name);
+            });
+
+            if (h2hMatches.length > 0) {
+              let aH2h = 0, bH2h = 0;
+              h2hMatches.forEach(m => {
+                const isT1 = m.team1.join(' & ') === a.name;
+                aH2h += isT1 ? m.score1 : m.score2;
+                bH2h += isT1 ? m.score2 : m.score1;
+              });
+              if (bH2h !== aH2h) return bH2h - aH2h;
+            }
+
+            // Tie Breaker 2: Buchholz
+            const getBuchholz = (name: string) => {
+              let score = 0;
+              matches.forEach(m => {
+                const t1 = m.team1.join(' & ');
+                const t2 = m.team2.join(' & ');
+                if (t1 === name) score += (stats[t2]?.gamesWon || 0);
+                else if (t2 === name) score += (stats[t1]?.gamesWon || 0);
+              });
+              return score;
+            };
+
+            return getBuchholz(b.name) - getBuchholz(a.name);
           });
         };
 

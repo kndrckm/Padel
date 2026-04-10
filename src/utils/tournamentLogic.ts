@@ -231,7 +231,9 @@ export function generateNextStageMatches(
       playedPairs.add([...m.team2].sort().join(','));
     });
 
-    const targetMatches = Math.floor(sortedPlayers.length / 4);
+    const isTeamMode = tournament.isKatapgama || tournament.mode.includes('Team');
+    const divisor = isTeamMode ? 2 : 4;
+    const targetMatches = Math.floor(sortedPlayers.length / divisor);
     const tempStats = new Map<string, number>();
     sortedPlayers.forEach(p => {
       const s = leaderboard.find(ls => ls.name === p);

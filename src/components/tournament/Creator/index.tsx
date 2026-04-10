@@ -293,6 +293,8 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
       setNotification({ message: "With 5-7 players, only 1 court can be used. The second court will be unused.", type: 'warning' });
     }
 
+    const advancingTeamsCount = mode === GameMode.MIXED ? playoffTeams : (isKatapgama ? 8 : undefined);
+    
     setIsCreating(true);
     try {
       await onCreate(name, mode, validPlayers, courtsCount, pointsToPlay, scoringMode, currentMatchCount, swissPools, playoffTeams, playoffType, qualifierMode, playoffMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint);
