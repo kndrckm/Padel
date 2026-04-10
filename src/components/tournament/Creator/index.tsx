@@ -309,12 +309,7 @@ export default function TournamentCreator({ onCancel, user, onCreate }: Tourname
 
     setIsCreating(true);
     try {
-      await onCreate(
-        name, 
-        mode, 
-        validPlayers, 
-        courtsCount, 
-      await onCreate(name, mode, players, courtsCount, pointsToPlay, scoringMode, currentMatchCount, swissPools, playoffTeams, playoffType, qualifierMode, playoffMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint);
+      await onCreate(name, mode, validPlayers, courtsCount, pointsToPlay, scoringMode, currentMatchCount, swissPools, playoffTeams, playoffType, qualifierMode, playoffMode, advancingTeamsCount, setsToPlay, gamesPerSet, useGoldenPoint);
     } catch (err) {
       console.error('Submit error:', err);
       setNotification({ message: 'Failed to create tournament. Please try again.', type: 'error' });
