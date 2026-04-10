@@ -481,7 +481,7 @@ export default function DevTools({ user, currentTournament, matches = [] }: DevT
                     </div>
                     <div className="text-left">
                       <p className="font-bold text-lg">Full Lifecycle Audit</p>
-                      <p className="text-xs font-medium opacity-40">Complete test: Create -> S1 -> S2 -> Results</p>
+                      <p className="text-xs font-medium opacity-40">Complete test: Create → S1 → S2 → Results</p>
                     </div>
                   </div>
                   <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all" />
