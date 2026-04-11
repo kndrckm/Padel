@@ -94,6 +94,7 @@ export default function TournamentDetail({
   const [showShareTooltip, setShowShareTooltip] = useState(false);
   const [advancingTeamsPreview, setAdvancingTeamsPreview] = useState<string[][] | null>(null);
   const [isResetingPlayoff, setIsResetingPlayoff] = useState(false);
+  const [isResetingStage, setIsResetingStage] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
   const [shuffleMatches, setShuffleMatches] = useState<Match[]>([]);
 
@@ -367,26 +368,62 @@ export default function TournamentDetail({
     }
   };
 
-  const handleResetPlayoff = async () => {
-    if (!isCreator) return;
-    setIsResetingPlayoff(true);
+  const handleRerollStage = async (targetStage: number) => {
+    if (!isCreator || isNaN(targetStage) || targetStage <= 1) return;
+
+    if (!window.confirm(`Are you sure you want to reroll Stage ${targetStage}? This will delete all matches in this stage and any subsequent stages/playoffs.`)) return;
+
+    setIsResetingStage(true);
     try {
-      // Deep Purge: 
-      // 1. Delete all matches explicitly marked as Playoff
-      // 2. Delete any 'ghost' qualifier matches (Stage 3+) that aren't part of the 2-stage Katapgama format
       const q = query(collection(db, `tournaments/${tournament.id}/matches`));
       const snapshot = await getDocs(q);
       
       const deletePromises = snapshot.docs
         .filter(doc => {
           const data = doc.data();
-          return data.isPlayoff === true || (data.stage > 2 && !data.isPlayoff);
+          return data.isPlayoff === true || (data.stage >= targetStage && !data.isPlayoff);
         })
         .map(doc => deleteDoc(doc.ref));
         
       await Promise.all(deletePromises);
 
-      await onUpdate({ playoffStarted: false, advancingTeams: [] });
+      // Decrement tournament currentStage
+      const prevStage = targetStage - 1;
+      await onUpdate({ 
+        currentStage: prevStage,
+        playoffStarted: false,
+        advancingTeams: []
+      });
+      
+      setTab(prevStage.toString());
+    } catch (error) {
+       handleFirestoreError(error, OperationType.DELETE, `tournaments/${tournament.id}/stage/${targetStage}`);
+    } finally {
+      setIsResetingStage(false);
+    }
+  };
+
+  const handleResetPlayoff = async () => {
+    if (!isCreator) return;
+    setIsResetingPlayoff(true);
+    try {
+      // Deep Purge: 
+      // 1. Delete all matches explicitly marked as Playoff
+      // 2. Delete any 'ghost' qualifier matches (Stage 2+) if we want a clean reset to Stage 1
+      const q = query(collection(db, `tournaments/${tournament.id}/matches`));
+      const snapshot = await getDocs(q);
+      
+      const deletePromises = snapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          // Fix: Also delete stage 2 if we are resetting to stage 1
+          return data.isPlayoff === true || (data.stage > 1 && !data.isPlayoff);
+        })
+        .map(doc => deleteDoc(doc.ref));
+        
+      await Promise.all(deletePromises);
+
+      await onUpdate({ playoffStarted: false, advancingTeams: [], currentStage: 1 });
       setTab('1');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `tournaments/${tournament.id}/playoff`);
@@ -427,6 +464,7 @@ export default function TournamentDetail({
   const isLatestStage = tab === (tournament.currentStage || 1).toString();
   const canGenerateNextStage = user && isStageBasedMode && currentStageCompleted && !nextStageExists && (tournament.currentStage || 1) < maxPossibleStages && isLatestStage;
   const canStartPlayoffs = user && (tournament.mode === GameMode.ROUND_ROBIN || tournament.isKatapgama) && currentStageCompleted && (tournament.currentStage || 1) === maxPossibleStages && !nextStageExists && isLatestStage;
+  const canRerollStage = user && isCreator && isStageBasedMode && !tournament.playoffStarted && parseInt(tab) > 1 && matches.some(m => m.stage === parseInt(tab));
 
   const maxStage = useMemo(() => {
     const stagesFromMatches = matches.filter(m => !m.isPlayoff && !m.deleted).map(m => m.stage || 1);
@@ -531,6 +569,16 @@ export default function TournamentDetail({
             {canGenerateNextStage && (
               <button onClick={generateNextStage} className="bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-bold shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
                 Next Stage
+              </button>
+            )}
+            {canRerollStage && (
+              <button 
+                onClick={() => handleRerollStage(parseInt(tab))}
+                disabled={isResetingStage}
+                className="flex items-center gap-2 px-6 py-4 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-all font-bold"
+              >
+                <RefreshCw className={`w-5 h-5 ${isResetingStage ? 'animate-spin' : ''}`} />
+                Reroll Stage {tab}
               </button>
             )}
           </div>
