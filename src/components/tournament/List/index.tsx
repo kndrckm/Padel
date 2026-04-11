@@ -1,20 +1,21 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User } from 'firebase/auth';
-import { LogOut, Plus, ChevronRight, UserCheck } from 'lucide-react';
+import { LogOut, Plus, ChevronRight, UserCheck, Copy } from 'lucide-react';
 import { Tournament } from '../../../types';
 import { PadelBall } from '../../common/Icons';
 
 interface TournamentListProps {
   tournaments: Tournament[];
   onSelect: (t: Tournament) => void;
+  onDuplicate: (t: Tournament) => void;
   onCreateNew: () => void;
   onManage: () => void;
   onLogout: () => void;
   user: User | null;
 }
 
-export default function TournamentList({ tournaments, onSelect, onCreateNew, onManage, onLogout, user }: TournamentListProps) {
+export default function TournamentList({ tournaments, onSelect, onDuplicate, onCreateNew, onManage, onLogout, user }: TournamentListProps) {
   return (
     <motion.div 
       key="list"
@@ -111,8 +112,22 @@ export default function TournamentList({ tournaments, onSelect, onCreateNew, onM
                     </span>
                     <h3 className="text-2xl font-bold text-on-surface">{t.name}</h3>
                   </div>
-                  <div className="p-3 bg-surface-container-low rounded-xl group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
-                    <ChevronRight className="w-6 h-6" />
+                  <div className="flex items-center gap-3">
+                    {user?.uid === t.creatorId && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDuplicate(t);
+                        }}
+                        className="p-3 bg-surface-container-low rounded-xl text-on-surface/40 hover:bg-primary/10 hover:text-primary transition-all md:opacity-0 group-hover:opacity-100"
+                        title="Duplicate as Backup"
+                      >
+                        <Copy className="w-5 h-5" />
+                      </button>
+                    )}
+                    <div className="p-3 bg-surface-container-low rounded-xl group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+                      <ChevronRight className="w-6 h-6" />
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-8 text-sm font-medium text-on-surface/60">

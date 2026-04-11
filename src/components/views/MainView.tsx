@@ -6,7 +6,8 @@ import { Tournament, Match, MatchStatus, OperationType } from '../../types';
 import { 
   createTournament as createTournamentService, 
   deleteTournament as deleteTournamentService, 
-  updateTournament as updateTournamentService 
+  updateTournament as updateTournamentService,
+  duplicateTournament as duplicateTournamentService 
 } from '../../lib/tournamentService';
 
 // Components
@@ -49,6 +50,11 @@ export const MainView = ({
         <TournamentList 
           tournaments={tournaments}
           onSelect={(t) => { setSelectedTournament(t); setView('detail'); }}
+          onDuplicate={async (t) => {
+            if (user) {
+              await duplicateTournamentService(t.id!, t, user.uid);
+            }
+          }}
           onCreateNew={() => setView('create')}
           onManage={() => setView('manage')}
           onLogout={handleLogout}

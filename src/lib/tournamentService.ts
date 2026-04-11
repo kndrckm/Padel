@@ -4,6 +4,8 @@ import {
   doc, 
   deleteDoc, 
   updateDoc,
+  getDocs,
+  getDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -137,5 +139,44 @@ export async function updateTournament(id: string, updates: Partial<Tournament>)
     await updateDoc(doc(db, 'tournaments', id), updates);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `tournaments/${id}`);
+  }
+}
+
+export async function duplicateTournament(id: string, tournament: Tournament, userId: string): Promise<string> {
+  try {
+    const { id: _, ...rest } = tournament;
+    const newData = {
+      ...rest,
+      name: `${tournament.name} (Backup)`,
+      creatorId: userId,
+      createdAt: new Date().toISOString(),
+      playoffStarted: tournament.playoffStarted || false,
+      currentStage: tournament.currentStage || 1,
+    };
+
+    // 1. Create new tournament
+    const newTournamentRef = await addDoc(collection(db, 'tournaments'), newData);
+    const newId = newTournamentRef.id;
+
+    // 2. Fetch all matches
+    const matchesRef = collection(db, `tournaments/${id}/matches`);
+    const matchesSnap = await getDocs(matchesRef);
+
+    // 3. Create matches in new tournament
+    // Using simple loop for reliability; match count is generally low in Padel
+    for (const mDoc of matchesSnap.docs) {
+      const { id: __, ...mRest } = mDoc.data();
+      await addDoc(collection(db, `tournaments/${newId}/matches`), {
+        ...mRest,
+        tournamentId: newId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    return newId;
+  } catch (error) {
+    console.error('Duplication error:', error);
+    handleFirestoreError(error, OperationType.CREATE, 'tournaments');
+    throw error;
   }
 }
