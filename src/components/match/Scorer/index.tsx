@@ -23,7 +23,7 @@ import { User } from 'firebase/auth';
 import { db } from '../../../lib/firebase';
 import { Match, Tournament, MatchStatus, ScoringMode, GameMode } from '../../../types';
 import { PadelCourt } from './PadelCourt';
-import { useTennisLogic, TENNIS_POINTS } from '../../../hooks/useTennisLogic';
+import { getNextPoint, checkGameWin, checkSetWin, TENNIS_POINTS } from '../../../hooks/useTennisLogic';
 import { KatapgamaLogo } from '../../common/KatapgamaLogo';
 import { ChampionOverlay } from '../../common/ChampionOverlay';
 
@@ -57,7 +57,7 @@ export default function MatchScorer({
   const [matchWinner, setMatchWinner] = useState<1 | 2 | null>(null);
   const [forceCelebration, setForceCelebration] = useState(false);
 
-  const { getNextPoint, checkGameWin, checkSetWin } = useTennisLogic();
+  // Tennis scoring utility functions (no longer a hook)
   const scoringMode = match.scoringMode || tournament.scoringMode || ScoringMode.AMERICANO;
   const pointsToPlayLocal = match.pointsToPlay || tournament.pointsToPlay || 21;
   const setsToPlayLocal = match.setsToPlay || tournament.setsToPlay || 1;
@@ -371,7 +371,7 @@ export default function MatchScorer({
       particleCount: 150,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#fa4615', '#8A9A5B', '#ffffff']
+      colors: ['#ffde59', '#8A9A5B', '#ffffff']
     });
 
     // Detect Grand Final
@@ -451,7 +451,7 @@ export default function MatchScorer({
               <div className="flex bg-surface-container-low p-1 rounded-2xl">
               <button 
                 onClick={() => setForceCelebration(!forceCelebration)} 
-                className={`p-3 rounded-xl transition-all flex items-center gap-2 ${forceCelebration ? 'bg-[#fa4615] text-white shadow-lg shadow-[#fa4615]/20' : 'hover:bg-surface-container-lowest text-on-surface/40'}`}
+                className={`p-3 rounded-xl transition-all flex items-center gap-2 ${forceCelebration ? 'bg-primary-container text-on-primary-container shadow-lg shadow-primary/20' : 'hover:bg-surface-container-lowest text-on-surface/40'}`}
                 title="Force Champion Ceremony"
               >
                 <PartyPopper className={`w-5 h-5 ${forceCelebration ? 'animate-bounce' : ''}`} />
@@ -589,7 +589,7 @@ export default function MatchScorer({
             <div className="w-full max-w-md">
               <button 
                 onClick={complete} 
-                className="w-full bg-[#fa4615] text-white py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-[#fa4615]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full bg-primary-container text-on-primary-container py-7 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 Confirm Match Result
               </button>

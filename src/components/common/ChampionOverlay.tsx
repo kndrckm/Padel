@@ -42,7 +42,7 @@ export const ChampionOverlay = ({ teamName, players, onContinue }: ChampionOverl
     >
       {/* Background Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#fa4615]/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-container/20 rounded-full blur-[120px] animate-pulse" />
       </div>
 
       <div className="relative flex flex-col items-center gap-12 w-full max-w-4xl px-6">
@@ -52,19 +52,19 @@ export const ChampionOverlay = ({ teamName, players, onContinue }: ChampionOverl
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5, type: "spring", damping: 12 }}
-          className="bg-[#fa4615] px-12 py-8 rounded-[2.5rem] shadow-[0_0_50px_rgba(250,70,21,0.4)] text-center border-4 border-white/20"
+          className="bg-primary-container px-12 py-8 rounded-[2.5rem] shadow-[0_0_50px_rgba(255,222,89,0.4)] text-center border-4 border-white/20"
         >
           {teamName && (
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60 mb-2">Tournament Champion</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-on-primary-container/60 mb-2">Tournament Champion</p>
           )}
-          <h2 className="text-4xl md:text-6xl font-black text-white italic uppercase mb-4 tracking-tight">
+          <h2 className="text-4xl md:text-6xl font-black text-on-primary-container italic uppercase mb-4 tracking-tight">
             {teamName || "Champions"}
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             {players.map((p, i) => (
               <React.Fragment key={i}>
-                <span className="text-xl font-bold text-white uppercase tracking-widest">{p}</span>
-                {i < players.length - 1 && <span className="w-1.5 h-1.5 rounded-full bg-white/30" />}
+                <span className="text-xl font-bold text-on-primary-container uppercase tracking-widest">{p}</span>
+                {i < players.length - 1 && <span className="w-1.5 h-1.5 rounded-full bg-on-primary-container/30" />}
               </React.Fragment>
             ))}
           </div>
@@ -85,7 +85,7 @@ export const ChampionOverlay = ({ teamName, players, onContinue }: ChampionOverl
           <motion.div
             animate={{ 
               y: [0, -20, 0],
-              filter: ["drop-shadow(0 0 0px rgba(250,70,21,0))", "drop-shadow(0 0 30px rgba(250,70,21,0.6))", "drop-shadow(0 0 0px rgba(250,70,21,0))"]
+              filter: ["drop-shadow(0 0 0px rgba(255,222,89,0))", "drop-shadow(0 0 30px rgba(255,222,89,0.6))", "drop-shadow(0 0 0px rgba(255,222,89,0))"]
             }}
             transition={{ 
               repeat: Infinity, 
@@ -93,7 +93,7 @@ export const ChampionOverlay = ({ teamName, players, onContinue }: ChampionOverl
               ease: "easeInOut" 
             }}
           >
-            <Trophy className="w-48 h-48 md:w-64 md:h-64 text-[#fa4615]" strokeWidth={1.5} />
+            <Trophy className="w-48 h-48 md:w-64 md:h-64 text-primary-container" strokeWidth={1.5} />
           </motion.div>
           
           {/* Sparkles */}

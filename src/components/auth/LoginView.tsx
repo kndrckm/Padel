@@ -9,7 +9,7 @@ interface LoginViewProps {
 
 export const LoginView = ({ onLogin }: LoginViewProps) => {
   return (
-    <div className="min-h-screen bg-brand-neutral flex items-center justify-center p-6 bg-[#FDFBF3]">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -91,7 +91,7 @@ export const ShufflingOverlay = ({ matches, players, onComplete }: ShufflingOver
         animate={{ y: phase === 'settled' ? 100 : 0, opacity: phase === 'settled' ? 0 : 1 }}
         className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center"
       >
-        <p className="text-[#fa4615] font-black uppercase tracking-[0.4em] text-sm animate-pulse mb-2">
+        <p className="text-primary-container font-black uppercase tracking-[0.4em] text-sm animate-pulse mb-2">
           {phase === 'initial' && 'Initializing Matchmaking...'}
           {phase === 'shuffling' && 'Optimizing Fair Pairings...'}
           {phase === 'dealing' && 'Assigning Courts...'}
@@ -138,10 +138,10 @@ const ShuffleCard = ({
                     key={mIdx}
                     layoutId={`card-inner-${index}`}
                     animate={{ 
-                      backgroundColor: phase === 'settled' ? 'rgba(250, 70, 21, 0)' : '#fa4615',
+                      backgroundColor: phase === 'settled' ? 'rgba(112, 93, 0, 0)' : '#ffde59',
                       borderColor: phase === 'settled' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0)',
                     }}
-                    className="p-6 rounded-2xl shadow-2xl flex flex-col justify-center items-center h-48 text-white border-2 font-bold"
+                    className="p-6 rounded-2xl shadow-2xl flex flex-col justify-center items-center h-48 text-on-primary-container border-2 font-bold"
                   >
                      <div className="flex flex-col items-center gap-1 mb-4">
                         {teamName1 && <span className="text-[8px] font-black uppercase tracking-widest opacity-40">{teamName1}</span>}
@@ -177,7 +177,7 @@ const ShuffleCard = ({
         y: phase === 'shuffling' ? (Math.random() * 100 - 50) : 0,
         zIndex: total - index
       }}
-      className="absolute w-48 h-64 bg-[#fa4615] rounded-2xl shadow-2xl flex flex-col items-center justify-center p-6 border-4 border-on-surface/5"
+      className="absolute w-48 h-64 bg-primary-container rounded-2xl shadow-2xl flex flex-col items-center justify-center p-6 border-4 border-on-surface/5"
     >
       <div className="w-12 h-12 bg-on-surface/5 rounded-full flex items-center justify-center mb-4">
         <span className="text-on-surface/20 font-black">?</span>

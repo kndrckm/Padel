@@ -37,12 +37,13 @@ export const MatchesView = ({ matches, onSelectMatch, stage, players }: MatchesV
       {courts.map(court => (
         <div key={court} className="flex flex-col gap-6">
           {stageMatches.filter(m => (m.court || 1) === court).map((m) => (
-            <MatchCard 
-              key={m.id} 
-              m={m} 
-              onSelectMatch={onSelectMatch} 
-              getTeamName={getTeamName} 
-            />
+            <React.Fragment key={m.id}>
+              <MatchCard 
+                m={m} 
+                onSelectMatch={onSelectMatch} 
+                getTeamName={getTeamName} 
+              />
+            </React.Fragment>
           ))}
         </div>
       ))}
@@ -50,7 +51,13 @@ export const MatchesView = ({ matches, onSelectMatch, stage, players }: MatchesV
   );
 };
 
-const MatchCard = ({ m, onSelectMatch, getTeamName }: { m: Match, onSelectMatch: (m: Match) => void, getTeamName: (names: string[]) => string | null }) => {
+interface MatchCardProps {
+  m: Match;
+  onSelectMatch: (m: Match) => void;
+  getTeamName: (names: string[]) => string | null;
+}
+
+const MatchCard = ({ m, onSelectMatch, getTeamName }: MatchCardProps) => {
   const [presenceUsers, setPresenceUsers] = useState<any[]>([]);
 
   useEffect(() => {

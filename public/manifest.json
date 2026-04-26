@@ -1,0 +1,26 @@
+{
+  "name": "Padel Tournament Manager",
+  "short_name": "Padel",
+  "description": "Create and manage Padel tournaments with real-time scoring, leaderboards, and bracket views.",
+  "start_url": "/Padel/",
+  "scope": "/Padel/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fcfaee",
+  "theme_color": "#fcfaee",
+  "icons": [
+    {
+      "src": "/Padel/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Padel/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "utilities"]
+}

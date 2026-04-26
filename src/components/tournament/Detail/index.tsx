@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { User } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
